@@ -10,7 +10,7 @@ Code is written in javaScript and uses API to communicate with Insightly and CKA
 Reads organisations and main contact from Insightly and populates CKAN
 
 ## Requirements
-By CKAN does not have attributes for storing the information needed about a organisation. The attributes for a CKAN organisation is extended. See this project for information about the extended properties. <link>
+By CKAN does not have attributes for storing the information needed about a organisation. The attributes for a CKAN organisation is extended. See this project for information about the extended properties. https://github.com/terchris/ckanext-scheming
 
 ## Software requirements
 The scripts are made for running in node. To access CKAN we use the <ckan-node-pacage>
