@@ -1,0 +1,27 @@
+{
+    "Insightly": {
+        "Config": {
+            "insightlyAPIKey": "a-long-key",
+            "insightlyURLGetOrgByTag" : "https://api.insight.ly/v2.2/Organisations/Search?tag=%3DSBNmedlemsvirksomhet&top=500",
+            "insightlyURLgetContactByTag":  "https://api.insight.ly/v2.2/Contacts/Search?tag=%3DSBNhovedkontakt&top=500"
+        },
+        "Output": {
+            "insightlyJoinedOutput": "logs/insightlyJoinedOutput.json",  
+            "insightlyRunLogFile": "logs/insightlyRunLogFile.txt",
+            "insightlyERRLogFile": "logs/insightlyERRLogFile.txt"
+        }
+    },
+    "CKAN": {
+        "Config": {
+            "ckanAPIkey": "a-long-key",
+            "CKANhost" : "http://data.urbalurba.com",
+            "ckanURLgetOrganisations":  "/api/3/action/organization_list?all_fields=true&include_extras=true"
+        },
+        "Log": {
+            "CKANRunLogFile": "missing.txt",
+            "CKANERRLogFile": "alsomissing.txt"
+          }
+
+    }
+}
+

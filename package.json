@@ -1,0 +1,30 @@
+{
+  "name": "insightly_ckan_sync",
+  "version": "0.1.0",
+  "description": "Copy organisations from Insightly CRM to CKAN open data portal",
+  "main": "insightly_2_ckan.js",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "ckan": "^0.2.3",
+    "config": "^2.0.1",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/terchris/insightly_ckan_sync.git"
+  },
+  "keywords": [
+    "CKAN",
+    "Insightly"
+  ],
+  "author": "Terje Christensen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/terchris/insightly_ckan_sync/issues"
+  },
+  "homepage": "https://github.com/terchris/insightly_ckan_sync#readme"
+}
