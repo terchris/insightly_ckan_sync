@@ -1,6 +1,6 @@
 /**
  * insightly_2_ckan
- * terchris/28aug
+ * terchris/03Sep
  * 
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
@@ -33,6 +33,9 @@ const axios = require("axios"); //to install it: npm install axios
 var fs = require('fs'); // filesystem write 
 var config = require('config');
 var CKAN = require('ckan'); //The ckan client
+var throttledQueue = require('throttled-queue');
+
+
 
 
 const insightlyAPIKey  = config.get('Insightly.Config.insightlyAPIKey');
@@ -49,6 +52,11 @@ const CKANhost = config.get('CKAN.Config.CKANhost');
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
 
 
+// for throtteling update/create requests to CKAN
+var throttleParalell = config.get('CKAN.Config.throttleParalell'); // requests in paralell
+var throttleSpacing = config.get('CKAN.Config.throttleSpacing'); // timing between requets 1000 = 1 second
+var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the queue 
+//var throttle = throttledQueue(1, 1000); // create the queue 
 
 
 /****** START CKAN related stuff  */
@@ -97,7 +105,7 @@ function tydyOrganisations(orgArray) {
  *  
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
  */
-async function ckan_create_org(newOrg) {
+function ckan_create_org(newOrg) {
   var CKAN_API = "organization_create";
 
   var CKAN_urbalurba_import_record = 
@@ -134,9 +142,9 @@ async function ckan_create_org(newOrg) {
     log2File("OK", "Trying to create: "+JSON.stringify(CKAN_parameters.title),"");
 
 
-
-         await client.action(CKAN_API, CKAN_parameters,
-          await function (err, result) {
+    throttle(function () { // queue all requests   
+          client.action(CKAN_API, CKAN_parameters,
+           function (err, result) {
             if (err != null) { //some error - try figure out what
                 log2File("ERR", "ERROR on create :" + JSON.stringify(result),err);
             } else // we have managed to update. We are getting the full info for the org as the result
@@ -145,7 +153,7 @@ async function ckan_create_org(newOrg) {
             }
 
         });
- 
+      });
 };
 
 
@@ -183,36 +191,37 @@ function ckan_update_org_axios(newOrg) {
 
   axios.defaults.baseURL = CKANhost;
   axios.defaults.headers.common['Authorization'] = ckanAPIkey;
-  // axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+  
 
 
   log2File("OK", "Trying to AXIOS update: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
 
-  axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
+  throttle(function () { // queue all requests   
+    axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
 
-    .then(function (response) {
-      console.log(response);
-      log2File("OK", "Updated AXIOS:" + JSON.stringify(response.data.result),"");
-    })
-    .catch(function (error) {
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.log(error.response.data);
-        console.log(error.response.status);
-        console.log(error.response.headers);
-      } else if (error.request) {
-        // The request was made but no response was received
-        // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-        // http.ClientRequest in node.js
-        console.log(error.request);
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.log('Error', error.message);
-      }
-      console.log(error.config);
-    });
-
+      .then(function (response) {
+        console.log(response);
+        log2File("OK", "Updated AXIOS:" + JSON.stringify(response.data.result),"");
+      })
+      .catch(function (error) {
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) {
+          // The request was made but no response was received
+          // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+          // http.ClientRequest in node.js
+          console.log(error.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      });
+  });
 
 
 };
@@ -225,7 +234,7 @@ function ckan_update_org_axios(newOrg) {
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.patch.organization_patch
  *  
  */
-async function ckan_update_org(newOrg) {
+function ckan_update_org(newOrg) {
   var CKAN_API = "organization_patch";
   
   var CKAN_urbalurba_import_record = 
@@ -262,8 +271,8 @@ async function ckan_update_org(newOrg) {
     
     log2File("OK", "Trying to update: "+JSON.stringify(CKAN_parameters.title),"");
 
-         await client.action(CKAN_API, CKAN_parameters,
-          await function (err, result) {
+         client.action(CKAN_API, CKAN_parameters,
+           function (err, result) {
             if (err != null) { //some error - try figure out what
                 log2File("ERR", "ERROR on Update :" + JSON.stringify(result),err);
             } else // we have managed to update. We are getting the full info for the org as the result
@@ -280,21 +289,20 @@ async function ckan_update_org(newOrg) {
 /** updateCKANorganizations
  * Loop trugh all organizations and publish them to CKAN
  * Existing organizations are updated and new are created
+ * uses trotteling so that the CKAN server is not dying on us
  */
 function updateCKANorganizations(organizationArray) {
-    debugger;
-    for (var i = 0; i < organizationArray.length; i++) {
-        org = organizationArray[i];
-        if (org.CKAN_ID == "")
-            ckan_create_org(org); // Create if the org is not in CKAN
-        else
-         // if ( i == 84) //horten-kommune oppdateres
-          //{
-            //ckan_update_org(org); // Update if the org is already in CKAN
-            ckan_update_org_axios(org);
-          //}
-    }
-    
+  debugger;
+  for (var i = 0; i < organizationArray.length; i++) {
+    org = organizationArray[i];
+    //throttle(function () { // queue all requests 
+      if (org.CKAN_ID == "")
+        ckan_create_org(org); // Create if the org is not in CKAN
+      else
+        ckan_update_org_axios(org);
+    //});
+  }
+
 }
 
 
