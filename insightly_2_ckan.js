@@ -289,18 +289,25 @@ function ckan_update_org(newOrg) {
 /** updateCKANorganizations
  * Loop trugh all organizations and publish them to CKAN
  * Existing organizations are updated and new are created
- * uses trotteling so that the CKAN server is not dying on us
+ * IF the organisation or contact has not been updated in insightly since last export
+ * then there s no point updating the same data 
+ * (this asumes that only edit source is insightly. NOT testing if ckan has been updated)
  */
 function updateCKANorganizations(organizationArray) {
   debugger;
   for (var i = 0; i < organizationArray.length; i++) {
     org = organizationArray[i];
-    //throttle(function () { // queue all requests 
+
       if (org.CKAN_ID == "")
         ckan_create_org(org); // Create if the org is not in CKAN
       else
-        ckan_update_org_axios(org);
-    //});
+        if (1==1) // for debugging
+        //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc) 
+        {
+          ckan_update_org_axios(org);
+        }
+        
+
   }
 
 }
@@ -845,8 +852,9 @@ getAllData()
         insightly_id: organisasjonen.ORGANISATION_ID,
         insightly_tags: insightlyGetTags(organisasjonen),
         Sustainable_Development_Goals: insightlyGetCustomField("Sustainable_Development_Goals", organisasjonen),
-        employee_resource_id: insightlyGetCustomField("CKAN_EMPLOYEE_RESOURCE_ID", organisasjonen) 
-        
+        employee_resource_id: insightlyGetCustomField("CKAN_EMPLOYEE_RESOURCE_ID", organisasjonen),
+        insightly_org_date_updated_utc: organisasjonen.DATE_UPDATED_UTC,
+        insightly_contact_date_updated_utc: kontakten.DATE_UPDATED_UTC         
       };
     });
 
@@ -880,7 +888,11 @@ getAllData()
           insightly_tags: theInsightlyOrg.insightly_tags,
           Sustainable_Development_Goals: theInsightlyOrg.Sustainable_Development_Goals,
           employee_resource_id: theInsightlyOrg.employee_resource_id,
-          CKAN_ID: theCkanOrg.id
+          CKAN_ID: theCkanOrg.id,
+          insightly_source_insightly_org_date_updated_utc: theInsightlyOrg.insightly_org_date_updated_utc,
+          insightly_source_insightly_contact_date_updated_utc: theInsightlyOrg.insightly_contact_date_updated_utc,
+          ckan_source_insightly_org_date_updated_utc: theInsightlyOrg.insightly_org_date_updated_utc, //TODO: replace with ckan data
+          ckan_source_insightly_contact_date_updated_utc: theInsightlyOrg.insightly_contact_date_updated_utc  //TODO: replace with ckan data
           
         };
       });
