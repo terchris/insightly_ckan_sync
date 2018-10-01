@@ -1,6 +1,7 @@
 /**
  * insightly_2_ckan
- * terchris/03Sep
+ * terchris/20Sep
+ * Latest: started dev for testing if org needs to be sent to ckan
  * 
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
@@ -158,6 +159,81 @@ function ckan_create_org(newOrg) {
 
 
 
+/** ckan_create_org_axios
+ * creates a new org in ckan using axios
+ *  
+ * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
+ */
+function ckan_create_org_axios(newOrg) {
+  
+
+  var CKAN_urbalurba_import_record = 
+    {
+        "title": newOrg.title,
+        "name": newOrg.name,      
+        "slogan": newOrg.slogan,          
+        "website": newOrg.website,
+        "organization_type": newOrg.organization_type,
+        "description": newOrg.description,
+        "image_url": newOrg.image_url,
+        "member": newOrg.member,
+        "organization_number": newOrg.organization_number,
+        "main_adddress": newOrg.main_adddress,
+        "phone": newOrg.phone,
+        "contact_name": newOrg.contact_name,
+        "contact_title": newOrg.contact_title,
+        "contact_email": newOrg.contact_email,
+        "contact_mobile": newOrg.contact_mobile,
+        "member_tags": newOrg.member_tags,
+        "segment": newOrg.segment,
+        "insightly_id": newOrg.insightly_id,
+        "insightly_tags": newOrg.insightly_tags,
+        "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
+        "employee_resource_id" : newOrg.employee_resource_id
+      };
+
+      axios.defaults.baseURL = CKANhost;
+      axios.defaults.headers.common['Authorization'] = ckanAPIkey;
+
+
+    log2File("OK", "Trying to AXIOS create: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
+
+    throttle(function () { // queue all requests   
+      axios.post('/api/3/action/organization_create', CKAN_urbalurba_import_record)
+  
+        .then(function (response) {
+          console.log(response);
+          log2File("OK", "Created AXIOS:" + JSON.stringify(response.data.result),"");
+        })
+        .catch(function (error) {
+          if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.log(error.response.data);
+            console.log(error.response.status);
+            console.log(error.response.headers);
+          } else if (error.request) {
+            // The request was made but no response was received
+            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+            // http.ClientRequest in node.js
+            console.log(error.request);
+          } else {
+            // Something happened in setting up the request that triggered an Error
+            console.log('Error', error.message);
+          }
+          console.log(error.config);
+        });
+    });
+  
+
+};
+
+
+
+
+
+
+
 /** ckan_update_org_axios
  * update using axios 
  */
@@ -299,9 +375,9 @@ function updateCKANorganizations(organizationArray) {
     org = organizationArray[i];
 
       if (org.CKAN_ID == "")
-        ckan_create_org(org); // Create if the org is not in CKAN
+        ckan_create_org_axios(org); // Create if the org is not in CKAN
       else
-        if (1==1) // for debugging
+        if (1==0) // for debugging
         //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc) 
         {
           ckan_update_org_axios(org);
