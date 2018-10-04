@@ -33,7 +33,7 @@ let request = require('request');
 const axios = require("axios"); //to install it: npm install axios
 var fs = require('fs'); // filesystem write 
 var config = require('config');
-var CKAN = require('ckan'); //The ckan client
+//TODO: remove var CKAN = require('ckan'); //The ckan client
 var throttledQueue = require('throttled-queue');
 
 
@@ -91,11 +91,33 @@ function tydyOrganisations(orgArray) {
       }
 
 
+
+      //problems_solved is stored with ";" as separator. Change it to ",""
+      if (orgArray[i].problems_solved != null) {
+        orgArray[i].problems_solved = orgArray[i].problems_solved.replace(/;/g, ',');
+      }
+
+      //organization_segments is stored with ";" as separator. Change it to ",""
+      if (orgArray[i].organization_segments != null) {
+        orgArray[i].organization_segments = orgArray[i].organization_segments.replace(/;/g, ',');
+      }
+
       //make sure it is lowercaase - and replace norwegian letters 
       orgArray[i].name = orgArray[i].name.toLowerCase();
       orgArray[i].name = orgArray[i].name.replace(/æ/g, 'ae');
       orgArray[i].name = orgArray[i].name.replace(/ø/g, 'o');
       orgArray[i].name = orgArray[i].name.replace(/å/g, 'a');
+
+      //TODO: temporary fix because we need to expand the org types.
+      // These lines maps the new types in insightly to the old ones in ckan.
+      // when the sheme for an org is changed in ckan we can remove these lines
+      if (orgArray[i].organization_type == "civil_society_ngo") orgArray[i].organization_type = "civil_society";
+      if (orgArray[i].organization_type == "municipality") orgArray[i].organization_type = "public";
+      if (orgArray[i].organization_type == "academia") orgArray[i].organization_type = "public";
+      if (orgArray[i].organization_type == "association") orgArray[i].organization_type = "public";
+      if (orgArray[i].organization_type == "government") orgArray[i].organization_type = "public";
+
+
 
   }
 
@@ -377,7 +399,7 @@ function updateCKANorganizations(organizationArray) {
       if (org.CKAN_ID == "")
         ckan_create_org_axios(org); // Create if the org is not in CKAN
       else
-        if (1==0) // for debugging
+        if (1==1) // for debugging
         //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc) 
         {
           ckan_update_org_axios(org);
@@ -666,7 +688,8 @@ function insightlyGetCustomField(fieldName,orgRecord){
     if(Array.isArray(orgRecord.CUSTOMFIELDS)){ // and it is an array
       theCustomFields = orgRecord.CUSTOMFIELDS;
       for (var i = 0; i < theCustomFields.length; i++) {
-        if(theCustomFields[i].CUSTOM_FIELD_ID == fieldName) { // we found it
+        // V2.2 API if(theCustomFields[i].CUSTOM_FIELD_ID == fieldName) { // we found it
+        if(theCustomFields[i].FIELD_NAME == fieldName) { // we found it
           return theCustomFields[i].FIELD_VALUE ;
         }
       }
@@ -897,14 +920,14 @@ function insightlyIsMember(orgRecord){
  * 
  */
 
-var client = new CKAN.Client(CKANhost, ckanAPIkey); // initiate connection to CKAN
+//TODO: remove var client = new CKAN.Client(CKANhost, ckanAPIkey); // initiate connection to CKAN
 
 
 getAllData()
   .then(([insightlyOrgs, insightlyContacts, ckanOrgs]) => {
 
     log2File("OK", "Insightly Organisations ("+ insightlyOrgs.length + ") / Insightly contacts ("+ insightlyContacts.length + ") / CKAN Organisations (" + ckanOrgs.length + ") read successfully","");
-    
+    // Fordebugging in the console do: insightlyOrgs.find(org => org.ORGANISATION_NAME === 'ABAX' );    
 
     var insightlyJoinedOrganisation = joinOrgContact(insightlyContacts, insightlyOrgs, "DEFAULT_LINKED_ORGANISATION", "ORGANISATION_ID", function (organisasjonen, kontakten) {
       return {
@@ -930,9 +953,12 @@ getAllData()
         Sustainable_Development_Goals: insightlyGetCustomField("Sustainable_Development_Goals", organisasjonen),
         employee_resource_id: insightlyGetCustomField("CKAN_EMPLOYEE_RESOURCE_ID", organisasjonen),
         insightly_org_date_updated_utc: organisasjonen.DATE_UPDATED_UTC,
-        insightly_contact_date_updated_utc: kontakten.DATE_UPDATED_UTC         
+        insightly_contact_date_updated_utc: kontakten.DATE_UPDATED_UTC,
+        organization_segments: insightlyGetCustomField("organization_segments", organisasjonen),
+        problems_solved: insightlyGetCustomField("problems_solved", organisasjonen),         
       };
     });
+// Fordebugging in the console do: insightlyJoinedOrganisation.find(org => org.title === 'ABAX' );    
 
     if (insightlyOrgs.length > insightlyJoinedOrganisation.length)  //If there are more organisations than the joined result. Then report the error
       log2File("ERR", "Missing contacts","");
@@ -968,11 +994,12 @@ getAllData()
           insightly_source_insightly_org_date_updated_utc: theInsightlyOrg.insightly_org_date_updated_utc,
           insightly_source_insightly_contact_date_updated_utc: theInsightlyOrg.insightly_contact_date_updated_utc,
           ckan_source_insightly_org_date_updated_utc: theInsightlyOrg.insightly_org_date_updated_utc, //TODO: replace with ckan data
-          ckan_source_insightly_contact_date_updated_utc: theInsightlyOrg.insightly_contact_date_updated_utc  //TODO: replace with ckan data
-          
+          ckan_source_insightly_contact_date_updated_utc: theInsightlyOrg.insightly_contact_date_updated_utc,  //TODO: replace with ckan data
+          organization_segments: theInsightlyOrg.organization_segments,
+          problems_solved: theInsightlyOrg.problems_solved
         };
       });
-  
+  // Fordebugging in the console do: allDataJoined.find(org => org.title === 'ABAX' );    
 
     fs.writeFile(insightlyJoinedOutput, JSON.stringify(allDataJoined), function (err) {
       if (err) throw err;
