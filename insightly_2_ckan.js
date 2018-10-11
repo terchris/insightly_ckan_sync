@@ -1,6 +1,9 @@
 /**
  * insightly_2_ckan
- * terchris/20Sep
+ * terchris/11Oct
+ * 
+ * Latest: changing org tye and insigthly tags. This requires change to terchris/ckanext-scheming
+ * 
  * Latest: started dev for testing if org needs to be sent to ckan
  * 
  * This program reads copy all members of the smart city network to CKAN
@@ -48,8 +51,11 @@ const insightlyERRLogFile = config.get('Insightly.Output.insightlyERRLogFile');
 const insightlyJoinedOutput = config.get('Insightly.Output.insightlyJoinedOutput');
 
 var ckanAPIkey = config.get('CKAN.Config.ckanAPIkey');
-const CKANhost = config.get('CKAN.Config.CKANhost');
+
+ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG:  
+//const CKANhost = config.get('CKAN.Config.CKANhost');
 // for dev: const CKANhost = "http://172.16.1.96";
+const CKANhost = "http://10.0.0.234";
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
 
 
@@ -67,10 +73,10 @@ var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the 
 
 
 
-/** tydyOrganisations
+/** tidyOrganisations
  * removes illegal characters 
 */
-function tydyOrganisations(orgArray) {
+function tidyOrganisations(orgArray) {
   //debugger;
   
   for (var i = 0; i < orgArray.length; i++) {
@@ -96,11 +102,19 @@ function tydyOrganisations(orgArray) {
       if (orgArray[i].problems_solved != null) {
         orgArray[i].problems_solved = orgArray[i].problems_solved.replace(/;/g, ',');
       }
+      // Stop using insightly tags. Just replace witht problems_solved
+      orgArray[i].insightly_tags = orgArray[i].problems_solved;
+
 
       //organization_segments is stored with ";" as separator. Change it to ",""
       if (orgArray[i].organization_segments != null) {
         orgArray[i].organization_segments = orgArray[i].organization_segments.replace(/;/g, ',');
       }
+
+      // Stop using he old segments. Just replace witht th new ones
+      orgArray[i].segment = orgArray[i].organization_segments;
+
+
 
       //make sure it is lowercaase - and replace norwegian letters 
       orgArray[i].name = orgArray[i].name.toLowerCase();
@@ -111,12 +125,13 @@ function tydyOrganisations(orgArray) {
       //TODO: temporary fix because we need to expand the org types.
       // These lines maps the new types in insightly to the old ones in ckan.
       // when the sheme for an org is changed in ckan we can remove these lines
+      /*
       if (orgArray[i].organization_type == "civil_society_ngo") orgArray[i].organization_type = "civil_society";
       if (orgArray[i].organization_type == "municipality") orgArray[i].organization_type = "public";
       if (orgArray[i].organization_type == "academia") orgArray[i].organization_type = "public";
       if (orgArray[i].organization_type == "association") orgArray[i].organization_type = "public";
       if (orgArray[i].organization_type == "government") orgArray[i].organization_type = "public";
-
+*/
 
 
   }
@@ -427,6 +442,8 @@ function updateCKANorganizations(organizationArray) {
 function log2File(logType, logText,jsonObject){
 var logFile="";
 var date = new Date();
+
+var myobj = JSON.stringify(jsonObject);
 
 var logRecord = {
     datetime: date.toJSON(),
@@ -1006,7 +1023,7 @@ getAllData()
       log2File("OK", "Joined result written to file: " +insightlyJoinedOutput,"");
       });
 
-    tydyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
+    tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
 
     updateCKANorganizations(allDataJoined);
 
