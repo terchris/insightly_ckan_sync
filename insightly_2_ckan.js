@@ -1,6 +1,6 @@
 /**
  * insightly_2_ckan
- * terchris/11Oct
+ * terchris/30Oct
  * 
  * Latest: changing org tye and insigthly tags. This requires change to terchris/ckanext-scheming
  * 
@@ -51,11 +51,12 @@ const insightlyERRLogFile = config.get('Insightly.Output.insightlyERRLogFile');
 const insightlyJoinedOutput = config.get('Insightly.Output.insightlyJoinedOutput');
 
 var ckanAPIkey = config.get('CKAN.Config.ckanAPIkey');
+// ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG: for local ubuntu VM  
 
-ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG:  
-//const CKANhost = config.get('CKAN.Config.CKANhost');
-// for dev: const CKANhost = "http://172.16.1.96";
-const CKANhost = "http://10.0.0.234";
+const CKANhost = config.get('CKAN.Config.CKANhost');
+// const CKANhost = "http://172.16.1.96"; //DEBUG: for locak ubunti VM
+// const CKANhost = "http://localhost:5000"; //DEBUG: for local docker dcker 
+
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
 
 
@@ -407,7 +408,7 @@ function ckan_update_org(newOrg) {
  * (this asumes that only edit source is insightly. NOT testing if ckan has been updated)
  */
 function updateCKANorganizations(organizationArray) {
-  debugger;
+  //debugger;
   for (var i = 0; i < organizationArray.length; i++) {
     org = organizationArray[i];
 
@@ -775,7 +776,7 @@ function insightlyGetContactinfos(fieldName,orgRecord){
 }
 
 
-/** getAddress
+/** getAddress This was version 2 of the insightly API
  *  returns the value of the fieldName provided in the parameter. 
  *  orgRecord parameter is the org we are extracting the custom field from
  *  If the tag is not defined it returns "Norway"
@@ -792,30 +793,52 @@ function insightlyGetContactinfos(fieldName,orgRecord){
             }
         ]
  * 
+
+
+The latest API structure looks like this
+ADDRESS_SHIP_CITY: "Brønnøysund",
+ADDRESS_SHIP_COUNTRY: "Norway",
+ADDRESS_SHIP_POSTCODE: "8900",
+ADDRESS_SHIP_STREET: "Havnegata 48",
+
+
+
  */
-function insightlyGetAddress(fieldName,orgRecord){
-  //debugger;
-  
-  if(orgRecord.hasOwnProperty("ADDRESSES")){ //if there are costom fields here
-    if(Array.isArray(orgRecord.ADDRESSES)){ // and it is an array
-      theAdresses = orgRecord.ADDRESSES;
-      for (var i = 0; i < theAdresses.length; i++) {
-        if(theAdresses[i].ADDRESS_TYPE == fieldName) { // we found it
-          if(theAdresses[i].COUNTRY == null ) 
-            country = "Norway";
-          else
-            country = theAdresses[i].COUNTRY;
+function insightlyGetAddress(orgRecord){
+var fullAddress =""; 
 
-           
-          fullAddress = theAdresses[i].STREET + ", " + theAdresses[i].POSTCODE + " " + theAdresses[i].CITY + ", " +  country
-          return fullAddress ;
-        }
-      }
-
-    }
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_STREET")){
+    if (orgRecord.ADDRESS_SHIP_STREET != null) {
+        fullAddress = fullAddress + orgRecord.ADDRESS_SHIP_STREET;  
+    }      
   }
 
-  return "Norway"; // not found
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_POSTCODE")){ 
+    if (orgRecord.ADDRESS_SHIP_POSTCODE != null) {
+      fullAddress = fullAddress + ", " + orgRecord.ADDRESS_SHIP_POSTCODE;
+    }      
+  }
+   
+
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_CITY")){ 
+    if (orgRecord.ADDRESS_SHIP_CITY != null) {    
+      fullAddress = fullAddress + " " + orgRecord.ADDRESS_SHIP_CITY;
+    }          
+  }
+   
+
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_COUNTRY")){ 
+    if (orgRecord.ADDRESS_SHIP_COUNTRY != null) {      
+      fullAddress = fullAddress + ", " + orgRecord.ADDRESS_SHIP_COUNTRY;
+    }              
+  } else {
+    fullAddress = fullAddress + ", Norway";
+  }
+
+    
+  return fullAddress ;
+   
+  
 }
 
 
@@ -951,14 +974,16 @@ getAllData()
         title: organisasjonen.ORGANISATION_NAME,
         name: insightlyGetCustomField("CKAN_NAME", organisasjonen),
         slogan: insightlyGetCustomField("slogan", organisasjonen),
-        website: insightlyGetContactinfos("WEBSITE",organisasjonen),
+        //website: insightlyGetContactinfos("WEBSITE",organisasjonen),
+        website: organisasjonen.WEBSITE,
         organization_type: insightlyGetCustomField("organization_type", organisasjonen),
         description: organisasjonen.BACKGROUND,
         image_url: insightlyGetCustomField("CKAN_LOGO_IMAGE", organisasjonen),
         member: insightlyIsMember(organisasjonen),
         organization_number: insightlyGetCustomField("Organisasjonsnummer", organisasjonen),
-        main_adddress: insightlyGetAddress("PRIMARY",organisasjonen),
-        phone: insightlyGetContactinfos("PHONE",organisasjonen),
+        main_adddress: insightlyGetAddress(organisasjonen),
+        //phone: insightlyGetContactinfos("PHONE",organisasjonen),
+        phone: organisasjonen.PHONE,
         contact_name: kontakten.FIRST_NAME + " " + kontakten.LAST_NAME,
         contact_title: insightlyGetContactTitle(kontakten),
         contact_email: insightlyGetContactinfos("EMAIL",kontakten),
