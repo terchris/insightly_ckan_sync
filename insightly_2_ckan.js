@@ -1,40 +1,40 @@
 /**
  * insightly_2_ckan
  * terchris/30Oct
- * 
+ *
  * Latest: changing org tye and insigthly tags. This requires change to terchris/ckanext-scheming
- * 
+ *
  * Latest: started dev for testing if org needs to be sent to ckan
- * 
+ *
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
- * 
+ *
  * Each member organisation marked with "=SBNmedlemsvirksomhet" has main contact person
  * The main contact person is a contact that has a tag "=SBNhovedkontakt"
- * The contact and the organisation is merged. 
- * 
+ * The contact and the organisation is merged.
+ *
  * The organisation record in Insightly and CKAN has been extended to hold custom fields.
- * 
+ *
  * Insightly fields
- * 
- * 
+ *
+ *
  * CKAN fields
  * see https://github.com/terchris/ckanext-scheming
- * 
+ *
  * Installation:
- * 
+ *
  * Configuration before use:
- * 
+ *
  * Output:
- * 
+ *
  * How to use the program:
  * node insightly_2_ckan.js
- * 
+ *
  */
 
 let request = require('request');
 const axios = require("axios"); //to install it: npm install axios
-var fs = require('fs'); // filesystem write 
+var fs = require('fs'); // filesystem write
 var config = require('config');
 //TODO: remove var CKAN = require('ckan'); //The ckan client
 var throttledQueue = require('throttled-queue');
@@ -51,21 +51,19 @@ const insightlyERRLogFile = config.get('Insightly.Output.insightlyERRLogFile');
 const insightlyJoinedOutput = config.get('Insightly.Output.insightlyJoinedOutput');
 
 var ckanAPIkey = config.get('CKAN.Config.ckanAPIkey');
-// ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG: for local ubuntu VM  
+// ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG: for local ubuntu VM
 
 const CKANhost = config.get('CKAN.Config.CKANhost');
 // const CKANhost = "http://172.16.1.96"; //DEBUG: for locak ubunti VM
-// const CKANhost = "http://localhost:5000"; //DEBUG: for local docker dcker 
+// const CKANhost = "http://localhost:5000"; //DEBUG: for local docker dcker
 
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
-
 
 // for throtteling update/create requests to CKAN
 var throttleParalell = config.get('CKAN.Config.throttleParalell'); // requests in paralell
 var throttleSpacing = config.get('CKAN.Config.throttleSpacing'); // timing between requets 1000 = 1 second
-var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the queue 
-//var throttle = throttledQueue(1, 1000); // create the queue 
-
+var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the queue
+//var throttle = throttledQueue(1, 1000); // create the queue
 
 /****** START CKAN related stuff  */
 
@@ -75,18 +73,18 @@ var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the 
 
 
 /** tidyOrganisations
- * removes illegal characters 
+ * removes illegal characters
 */
 function tidyOrganisations(orgArray) {
   //debugger;
-  
+
   for (var i = 0; i < orgArray.length; i++) {
       if (orgArray[i].slogan.length < 1) { //slogan is blank -> fix it
         orgArray[i].slogan = ".";
         log2File("ERR", "Organisation "+ orgArray[i].name + " (no " + i + ") is missing Slogan. setting it to a dot ",orgArray[i]);
       }
 
-      
+
       if (orgArray[i].organization_type.length < 1) { //organization_type is blank -> fix it
         orgArray[i].organization_type = "private";
         log2File("ERR", "Organisation "+ orgArray[i].name + " (no " + i + ") is missing organization_type. setting it to a private ",orgArray[i]);
@@ -117,7 +115,7 @@ function tidyOrganisations(orgArray) {
 
 
 
-      //make sure it is lowercaase - and replace norwegian letters 
+      //make sure it is lowercaase - and replace norwegian letters
       orgArray[i].name = orgArray[i].name.toLowerCase();
       orgArray[i].name = orgArray[i].name.replace(/æ/g, 'ae');
       orgArray[i].name = orgArray[i].name.replace(/ø/g, 'o');
@@ -141,17 +139,17 @@ function tidyOrganisations(orgArray) {
 
 /** ckan_create_org
  * creates a new org in ckan
- *  
+ *
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
  */
 function ckan_create_org(newOrg) {
   var CKAN_API = "organization_create";
 
-  var CKAN_urbalurba_import_record = 
+  var CKAN_urbalurba_import_record =
     {
         "title": newOrg.title,
-        "name": newOrg.name,      
-        "slogan": newOrg.slogan,          
+        "name": newOrg.name,
+        "slogan": newOrg.slogan,
         "website": newOrg.website,
         "organization_type": newOrg.organization_type,
         "description": newOrg.description,
@@ -181,7 +179,7 @@ function ckan_create_org(newOrg) {
     log2File("OK", "Trying to create: "+JSON.stringify(CKAN_parameters.title),"");
 
 
-    throttle(function () { // queue all requests   
+    throttle(function () { // queue all requests
           client.action(CKAN_API, CKAN_parameters,
            function (err, result) {
             if (err != null) { //some error - try figure out what
@@ -199,17 +197,17 @@ function ckan_create_org(newOrg) {
 
 /** ckan_create_org_axios
  * creates a new org in ckan using axios
- *  
+ *
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
  */
 function ckan_create_org_axios(newOrg) {
-  
 
-  var CKAN_urbalurba_import_record = 
+
+  var CKAN_urbalurba_import_record =
     {
         "title": newOrg.title,
-        "name": newOrg.name,      
-        "slogan": newOrg.slogan,          
+        "name": newOrg.name,
+        "slogan": newOrg.slogan,
         "website": newOrg.website,
         "organization_type": newOrg.organization_type,
         "description": newOrg.description,
@@ -236,9 +234,9 @@ function ckan_create_org_axios(newOrg) {
 
     log2File("OK", "Trying to AXIOS create: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
 
-    throttle(function () { // queue all requests   
+    throttle(function () { // queue all requests
       axios.post('/api/3/action/organization_create', CKAN_urbalurba_import_record)
-  
+
         .then(function (response) {
           console.log(response);
           log2File("OK", "Created AXIOS:" + JSON.stringify(response.data.result),"");
@@ -262,7 +260,7 @@ function ckan_create_org_axios(newOrg) {
           console.log(error.config);
         });
     });
-  
+
 
 };
 
@@ -273,15 +271,15 @@ function ckan_create_org_axios(newOrg) {
 
 
 /** ckan_update_org_axios
- * update using axios 
+ * update using axios
  */
 function ckan_update_org_axios(newOrg) {
 
-  var CKAN_urbalurba_import_record = 
+  var CKAN_urbalurba_import_record =
   {
       "title": newOrg.title,
-      "name": newOrg.name,      
-      "slogan": newOrg.slogan,          
+      "name": newOrg.name,
+      "slogan": newOrg.slogan,
       "website": newOrg.website,
       "organization_type": newOrg.organization_type,
       "description": newOrg.description,
@@ -305,12 +303,12 @@ function ckan_update_org_axios(newOrg) {
 
   axios.defaults.baseURL = CKANhost;
   axios.defaults.headers.common['Authorization'] = ckanAPIkey;
-  
+
 
 
   log2File("OK", "Trying to AXIOS update: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
 
-  throttle(function () { // queue all requests   
+  throttle(function () { // queue all requests
     axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
 
       .then(function (response) {
@@ -346,16 +344,16 @@ function ckan_update_org_axios(newOrg) {
 /** ckan_update_org
  * updates a org in ckan
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.patch.organization_patch
- *  
+ *
  */
 function ckan_update_org(newOrg) {
   var CKAN_API = "organization_patch";
-  
-  var CKAN_urbalurba_import_record = 
+
+  var CKAN_urbalurba_import_record =
     {
         "title": newOrg.title,
-        "name": newOrg.name,      
-        "slogan": newOrg.slogan,          
+        "name": newOrg.name,
+        "slogan": newOrg.slogan,
         "website": newOrg.website,
         "organization_type": newOrg.organization_type,
         "description": newOrg.description,
@@ -382,7 +380,7 @@ function ckan_update_org(newOrg) {
     CKAN_parameters = CKAN_urbalurba_import_record;
 
 
-    
+
     log2File("OK", "Trying to update: "+JSON.stringify(CKAN_parameters.title),"");
 
          client.action(CKAN_API, CKAN_parameters,
@@ -395,7 +393,7 @@ function ckan_update_org(newOrg) {
             }
 
         });
- 
+
 };
 
 
@@ -404,7 +402,7 @@ function ckan_update_org(newOrg) {
  * Loop trugh all organizations and publish them to CKAN
  * Existing organizations are updated and new are created
  * IF the organisation or contact has not been updated in insightly since last export
- * then there s no point updating the same data 
+ * then there s no point updating the same data
  * (this asumes that only edit source is insightly. NOT testing if ckan has been updated)
  */
 function updateCKANorganizations(organizationArray) {
@@ -416,14 +414,67 @@ function updateCKANorganizations(organizationArray) {
         ckan_create_org_axios(org); // Create if the org is not in CKAN
       else
         if (1==1) // for debugging
-        //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc) 
+        //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc)
         {
           ckan_update_org_axios(org);
         }
-        
+
 
   }
 
+}
+
+
+
+/** getLocationData
+ * Loop trugh all organizations and add geolocation data to organisation
+ * Adds all geolocation data to a new tag under the organisation.
+ * geo-data includes latlng coordinates to organisation HQ and ????
+ * Tag has the following format:
+ *    {
+ *      latlng: {
+ *                lat: y,
+ *                lng: x
+ *              },
+ *      ??: {
+ *            --
+ *          }
+ *    }
+ */
+async function getLocationData(allDataJoined) {
+  for(var i = 0; i < allDataJoined.length; i++) {
+
+    await axios.get('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates',
+      {
+        params: {
+          outSr: 4326,
+          forStorage: false,
+          outFields: '*',
+          maxLocations: 20,
+          f: 'json',
+          address: encodeURI(org.main_adddress)
+        }
+      })
+      .then(function(response) {
+        var res = response.data;
+
+        if(res.candidates.length > 0) {
+
+          allDataJoined[i].locationData = {
+            latlng: {
+              lat: res.candidates[0].location.y,
+              lng: res.candidates[0].location.x
+            }
+          };
+
+        }else{
+          console.log("No latlng results found from main address");
+        }
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  }
 }
 
 
@@ -438,9 +489,9 @@ function updateCKANorganizations(organizationArray) {
 /** log2File
  * logs to file
  * If logType is "ERR" then we log to insightlyERRLogFile othervise in insightlyRunLogFile
- * 
+ *
  */
-function log2File(logType, logText,jsonObject){
+function log2File(logType, logText, jsonObject){
 var logFile="";
 var date = new Date();
 
@@ -462,13 +513,13 @@ var logRecord = {
 
   fs.appendFile(logFile, JSON.stringify(logRecord) + ",", function (err) {
       if (err) throw err;
-      });  
+      });
 
 }
 
 
 /*** emptyContact
- * used by joinOrgContact when a organisation does not have a corresponding contact  
+ * used by joinOrgContact when a organisation does not have a corresponding contact
  * This routine returns a empty contact record.
  */
 function emptyContact() {
@@ -582,8 +633,8 @@ function joinOrgContact(lookupTable, mainTable, lookupKey, mainKey, select) {
 
 /** joinInsightlyCKAN
  * join is joining insightly org records and CKAN org records
- * ID in insightly org is "insightly_id" 
- * ID in CKAN org record is "id" 
+ * ID in insightly org is "insightly_id"
+ * ID in CKAN org record is "id"
  * http://learnjsdata.com/combine_data.html
  *
  */
@@ -615,8 +666,8 @@ function joinInsightlyCKAN(lookupTable, mainTable, lookupKey, mainKey, select) {
 
 
 /**
- * Get the organisations that are tagged with 
- * 
+ * Get the organisations that are tagged with
+ *
  */
 function insightlyGetOrgByTag() {
   return axios.get(insightlyURLGetOrgByTag, {
@@ -628,7 +679,7 @@ function insightlyGetOrgByTag() {
       return (response.data);
     })
     .catch(function (error) {
-      log2File("ERR", "insightlyGetOrgByTag",error);
+      log2File("ERR", "insightlyGetOrgByTag", error.response.statusText);
     });
 };
 
@@ -644,7 +695,7 @@ function insightlyGetContactByTag() {
       return (response.data);
     })
     .catch(function (error) {
-      log2File("ERR", "insightlyGetContactByTag",error);
+      log2File("ERR", "insightlyGetContactByTag", error.response.statusText);
     });
 };
 
@@ -659,7 +710,7 @@ function ckanGetOrganisations() {
       return (response.data.result);
     })
     .catch(function (error) {
-      log2File("ERR", "ckanGetOrganisations",error);
+      log2File("ERR", "ckanGetOrganisations", error.response.statusText);
     });
 };
 
@@ -675,7 +726,7 @@ function getAllData() {
 
 
 /** getCustomField
- *  returns the value of the fieldName provided in the parameter. 
+ *  returns the value of the fieldName provided in the parameter.
  *  orgRecord parameter is the org we are extracting the custom field from
  *  If the tag is not defined it returns ""
  * custom fields is in a structure like this:
@@ -697,7 +748,7 @@ function getAllData() {
                 "FIELD_VALUE": "public"
             }
         ]
- * 
+ *
  */
 function insightlyGetCustomField(fieldName,orgRecord){
   //debugger;
@@ -721,7 +772,7 @@ function insightlyGetCustomField(fieldName,orgRecord){
 
 
 /** getContactinfos
- *  returns the value of the fieldName provided in the parameter. 
+ *  returns the value of the fieldName provided in the parameter.
  *  orgRecord parameter is the org we are extracting the custom field from
  *  If the tag is not defined it returns ""
  * contactinfos is in a structure like this:
@@ -755,11 +806,11 @@ function insightlyGetCustomField(fieldName,orgRecord){
                 "DETAIL": "acando.com"
             }
         ]
- * 
+ *
  */
 function insightlyGetContactinfos(fieldName,orgRecord){
   //debugger;
-  
+
   if(orgRecord.hasOwnProperty("CONTACTINFOS")){ //if there are costom fields here
     if(Array.isArray(orgRecord.CONTACTINFOS)){ // and it is an array
       theContactinfos = orgRecord.CONTACTINFOS;
@@ -777,7 +828,7 @@ function insightlyGetContactinfos(fieldName,orgRecord){
 
 
 /** getAddress This was version 2 of the insightly API
- *  returns the value of the fieldName provided in the parameter. 
+ *  returns the value of the fieldName provided in the parameter.
  *  orgRecord parameter is the org we are extracting the custom field from
  *  If the tag is not defined it returns "Norway"
  * contactinfos is in a structure like this:
@@ -792,7 +843,7 @@ function insightlyGetContactinfos(fieldName,orgRecord){
                 "COUNTRY": "Norway"
             }
         ]
- * 
+ *
 
 
 The latest API structure looks like this
@@ -805,50 +856,50 @@ ADDRESS_SHIP_STREET: "Havnegata 48",
 
  */
 function insightlyGetAddress(orgRecord){
-var fullAddress =""; 
+var fullAddress ="";
 
   if(orgRecord.hasOwnProperty("ADDRESS_SHIP_STREET")){
     if (orgRecord.ADDRESS_SHIP_STREET != null) {
-        fullAddress = fullAddress + orgRecord.ADDRESS_SHIP_STREET;  
-    }      
+        fullAddress = fullAddress + orgRecord.ADDRESS_SHIP_STREET;
+    }
   }
 
-  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_POSTCODE")){ 
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_POSTCODE")){
     if (orgRecord.ADDRESS_SHIP_POSTCODE != null) {
       fullAddress = fullAddress + ", " + orgRecord.ADDRESS_SHIP_POSTCODE;
-    }      
+    }
   }
-   
 
-  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_CITY")){ 
-    if (orgRecord.ADDRESS_SHIP_CITY != null) {    
+
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_CITY")){
+    if (orgRecord.ADDRESS_SHIP_CITY != null) {
       fullAddress = fullAddress + " " + orgRecord.ADDRESS_SHIP_CITY;
-    }          
+    }
   }
-   
 
-  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_COUNTRY")){ 
-    if (orgRecord.ADDRESS_SHIP_COUNTRY != null) {      
+
+  if(orgRecord.hasOwnProperty("ADDRESS_SHIP_COUNTRY")){
+    if (orgRecord.ADDRESS_SHIP_COUNTRY != null) {
       fullAddress = fullAddress + ", " + orgRecord.ADDRESS_SHIP_COUNTRY;
-    }              
+    }
   } else {
     fullAddress = fullAddress + ", Norway";
   }
 
-    
+
   return fullAddress ;
-   
-  
+
+
 }
 
 
 /** getContactTitle
- * Finds the title that the contact has in the primary/main company she works for 
+ * Finds the title that the contact has in the primary/main company she works for
  * The rimary/main org is set by
  *         "DEFAULT_LINKED_ORGANISATION": 90640729
- * 
+ *
  * Returns the title if there is one - othervise ""
- * 
+ *
  * The structure holding the titles looks like this
  *         "LINKS": [
             {
@@ -888,9 +939,9 @@ var fullAddress ="";
  */
 function insightlyGetContactTitle(contact) {
   //debugger;
-  if(contact.hasOwnProperty("DEFAULT_LINKED_ORGANISATION")){ 
+  if(contact.hasOwnProperty("DEFAULT_LINKED_ORGANISATION")){
     primaryOrg = contact.DEFAULT_LINKED_ORGANISATION;
-    if(contact.hasOwnProperty("LINKS")){ 
+    if(contact.hasOwnProperty("LINKS")){
       if(Array.isArray(contact.LINKS)){ // and it is an array
         theLinks = contact.LINKS;
         for (var i = 0; i < theLinks.length; i++) {
@@ -924,14 +975,14 @@ function insightlyGetContactTitle(contact) {
  */
 function insightlyGetTags(orgRecord){
 //debugger;
-  if(orgRecord.hasOwnProperty("TAGS")){ 
+  if(orgRecord.hasOwnProperty("TAGS")){
     if(Array.isArray(orgRecord.TAGS)){ // and it is an array
       theTags = orgRecord.TAGS;
       comma =""; //no leading comma
       tagString = "";
       for (var i = 0; i < theTags.length; i++) {
         tagString = tagString + comma + theTags[i].TAG_NAME
-        comma =","; //now we put a comma  
+        comma =","; //now we put a comma
       }
       return tagString;
     }
@@ -957,17 +1008,17 @@ function insightlyIsMember(orgRecord){
 
 
 /**** Main code start
- * 
+ *
  */
 
 //TODO: remove var client = new CKAN.Client(CKANhost, ckanAPIkey); // initiate connection to CKAN
 
 
 getAllData()
-  .then(([insightlyOrgs, insightlyContacts, ckanOrgs]) => {
+  .then(async ([insightlyOrgs, insightlyContacts, ckanOrgs]) => {
 
     log2File("OK", "Insightly Organisations ("+ insightlyOrgs.length + ") / Insightly contacts ("+ insightlyContacts.length + ") / CKAN Organisations (" + ckanOrgs.length + ") read successfully","");
-    // Fordebugging in the console do: insightlyOrgs.find(org => org.ORGANISATION_NAME === 'ABAX' );    
+    // Fordebugging in the console do: insightlyOrgs.find(org => org.ORGANISATION_NAME === 'ABAX' );
 
     var insightlyJoinedOrganisation = joinOrgContact(insightlyContacts, insightlyOrgs, "DEFAULT_LINKED_ORGANISATION", "ORGANISATION_ID", function (organisasjonen, kontakten) {
       return {
@@ -997,18 +1048,17 @@ getAllData()
         insightly_org_date_updated_utc: organisasjonen.DATE_UPDATED_UTC,
         insightly_contact_date_updated_utc: kontakten.DATE_UPDATED_UTC,
         organization_segments: insightlyGetCustomField("organization_segments", organisasjonen),
-        problems_solved: insightlyGetCustomField("problems_solved", organisasjonen),         
+        problems_solved: insightlyGetCustomField("problems_solved", organisasjonen),
       };
     });
-// Fordebugging in the console do: insightlyJoinedOrganisation.find(org => org.title === 'ABAX' );    
+// Fordebugging in the console do: insightlyJoinedOrganisation.find(org => org.title === 'ABAX' );
 
     if (insightlyOrgs.length > insightlyJoinedOrganisation.length)  //If there are more organisations than the joined result. Then report the error
       log2File("ERR", "Missing contacts","");
     else
       log2File("OK", "Joined Organisations and contacts","");
-    
-      
-    
+
+
       var allDataJoined = joinInsightlyCKAN(ckanOrgs, insightlyJoinedOrganisation, "insightly_id", "insightly_id", function (theInsightlyOrg, theCkanOrg ) {
         return {
           title: theInsightlyOrg.title,
@@ -1041,7 +1091,7 @@ getAllData()
           problems_solved: theInsightlyOrg.problems_solved
         };
       });
-  // Fordebugging in the console do: allDataJoined.find(org => org.title === 'ABAX' );    
+  // Fordebugging in the console do: allDataJoined.find(org => org.title === 'ABAX' );
 
     fs.writeFile(insightlyJoinedOutput, JSON.stringify(allDataJoined), function (err) {
       if (err) throw err;
@@ -1052,10 +1102,11 @@ getAllData()
 
     updateCKANorganizations(allDataJoined);
 
+    await getLocationData(allDataJoined); // Adds geolocation data to organisations
+
 
 
 
 
 
   })
-
