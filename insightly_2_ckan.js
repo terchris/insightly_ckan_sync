@@ -48,7 +48,7 @@ const insightlyRunLogFile = path.join(localLogDir,config.get('Insightly.Log.insi
 const insightlyERRLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyERRLogFile'));
 const insightlyJoinedOutput = path.join(localLogDir,config.get('Insightly.Log.insightlyJoinedOutput'));
 
-/** Insightly related config stuff  **/ 
+/** Insightly related config stuff  **/
 const insightlyAPIKey  = config.get('Insightly.Config.insightlyAPIKey');
 const insightlyURLGetOrgByTag = config.get('Insightly.Config.insightlyURLGetOrgByTag');
 const insightlyURLgetContactByTag = config.get('Insightly.Config.insightlyURLgetContactByTag');
@@ -185,7 +185,7 @@ function ckan_create_org_axios(newOrg) {
         "insightly_tags": newOrg.insightly_tags,
         "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
         "locationData" : newOrg.locationData,
-        "urbalurbaData" : newOrg.urbalurbaData        
+        "urbalurbaData" : newOrg.urbalurbaData
       };
 
       axios.defaults.baseURL = CKANhost;
@@ -264,7 +264,7 @@ function ckan_update_org_axios(newOrg) {
       "insightly_tags": newOrg.insightly_tags,
       "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
       "locationData" : newOrg.locationData,
-      "urbalurbaData" : newOrg.urbalurbaData,           
+      "urbalurbaData" : newOrg.urbalurbaData,
       "employee_resource_id" : newOrg.employee_resource_id,
       "id" : newOrg.CKAN_ID,
     };
@@ -411,9 +411,9 @@ function updateCKANorganizations(organizationArray) {
  * Loop trugh all organizations and add geolocation data to organisation
  * Adds all geolocation data to a new tag under the organisation.
  * geo-data includes latlng coordinates to organisation HQ and ????
- * 
+ *
  * Contents of the tag is generated each time data is pushed to CKAN
- * 
+ *
  * Tag name is "locationData"
  * Tag has the following format:
  *    {
@@ -428,29 +428,18 @@ function updateCKANorganizations(organizationArray) {
  */
 async function getLocationData(allDataJoined) {
   for(var i = 0; i < allDataJoined.length; i++) {
+    var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?outSr=4326&forStorage=false&outFields=*&maxLocations=20&f=json&address=' + encodeURI(allDataJoined[i].main_adddress);
 
-    await axios.get('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates',
-      {
-        params: {
-          outSr: 4326,
-          forStorage: false,
-          outFields: '*',
-          maxLocations: 20,
-          f: 'json',
-          address: encodeURI(allDataJoined[i].main_adddress)
-        }
-      })
+    await axios.get(url)
       .then(function(response) {
-        var res = response.data;
+        var res = response.data,
+            lat = 60.645556,
+            lng = 3.726389;
 
         if(res.candidates.length > 0) {
 
-          allDataJoined[i].locationData = {
-            latlng: {
-              lat: res.candidates[0].location.y,
-              lng: res.candidates[0].location.x
-            }
-          };
+          lat = res.candidates[0].location.y;
+          lng = res.candidates[0].location.x;
 
         }else{
           logMsg = "Location: No latlng results found= "+ allDataJoined[i].name + " main_adddress= ", allDataJoined[i].main_adddress + " Setting it to Troll A platform in the north sea";          
@@ -463,6 +452,13 @@ async function getLocationData(allDataJoined) {
             }
           }
         }
+
+        allDataJoined[i].locationData = {
+          latlng: {
+            lat: lat,
+            lng: lng
+          }
+        };
       })
       .catch(function(error) {
         logMsg = "Location: some error: "+ JSON.stringify(error);
@@ -1157,7 +1153,7 @@ getAllData()
 
     updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
-    
+
 
 
 
