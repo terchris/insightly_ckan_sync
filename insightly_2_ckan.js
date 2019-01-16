@@ -137,63 +137,6 @@ function tidyOrganisations(orgArray) {
 
 }
 
-/** ckan_create_org
- * creates a new org in ckan
- *
- * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
- */
-function ckan_create_org(newOrg) {
-  var CKAN_API = "organization_create";
-
-  var CKAN_urbalurba_import_record =
-    {
-        "title": newOrg.title,
-        "name": newOrg.name,
-        "slogan": newOrg.slogan,
-        "website": newOrg.website,
-        "organization_type": newOrg.organization_type,
-        "description": newOrg.description,
-        "image_url": newOrg.image_url,
-        "member": newOrg.member,
-        "organization_number": newOrg.organization_number,
-        "main_adddress": newOrg.main_adddress,
-        "phone": newOrg.phone,
-        "contact_name": newOrg.contact_name,
-        "contact_title": newOrg.contact_title,
-        "contact_email": newOrg.contact_email,
-        "contact_mobile": newOrg.contact_mobile,
-        "member_tags": newOrg.member_tags,
-        "segment": newOrg.segment,
-        "insightly_id": newOrg.insightly_id,
-        "insightly_tags": newOrg.insightly_tags,
-        "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
-        "employee_resource_id" : newOrg.employee_resource_id
-      };
-
-
-
-    CKAN_parameters = CKAN_urbalurba_import_record;
-
-
-
-    log2File("OK", "Trying to create: "+JSON.stringify(CKAN_parameters.title),"");
-
-
-    throttle(function () { // queue all requests
-          client.action(CKAN_API, CKAN_parameters,
-           function (err, result) {
-            if (err != null) { //some error - try figure out what
-                log2File("ERR", "ERROR on create :" + JSON.stringify(result),err);
-            } else // we have managed to update. We are getting the full info for the org as the result
-            {
-                log2File("OK", "Created :" + JSON.stringify(result.result.display_name),"");
-            }
-
-        });
-      });
-};
-
-
 
 /** ckan_create_org_axios
  * creates a new org in ckan using axios
@@ -459,7 +402,7 @@ async function getLocationData(allDataJoined) {
           outFields: '*',
           maxLocations: 20,
           f: 'json',
-          address: encodeURI(org.main_adddress)
+          address: encodeURI(allDataJoined[i].main_adddress)
         }
       })
       .then(function(response) {
@@ -475,7 +418,13 @@ async function getLocationData(allDataJoined) {
           };
 
         }else{
-          console.log("No latlng results found from main address");
+          console.log("No latlng results found= ",allDataJoined[i].name , " main_adddress= ", allDataJoined[i].main_adddress ," Setting it to Troll A platform in the north sea");
+          allDataJoined[i].locationData = {
+            latlng: {
+              lat: 60.645556,
+              lng: 3.726389
+            }
+          }
         }
       })
       .catch(function(error) {
