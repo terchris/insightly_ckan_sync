@@ -205,7 +205,7 @@ function ckan_create_org_axios(newOrg) {
           log2File("OK", "Created AXIOS:" + JSON.stringify(response.data.result),"");
           logMsg = "CKAN: Created AXIOS:" + JSON.stringify(response.data.result);
           logger.info(logMsg);
-      
+
         })
         .catch(function (error) {
           if (error.response) {
@@ -285,7 +285,7 @@ function ckan_update_org_axios(newOrg) {
         log2File("OK", "Updated AXIOS:" + JSON.stringify(response.data.result),"");
         logMsg = "CKAN: Updated AXIOS:" + JSON.stringify(response.data.result);
         logger.info(logMsg);
-      
+
       })
       .catch(function (error) {
         if (error.response) {
@@ -364,7 +364,7 @@ function ckan_update_org(newOrg) {
                 log2File("ERR", "ERROR on Update :" + JSON.stringify(result),err);
                 logMsg = "CKAN: ERROR on Update :" + JSON.stringify(result)+ " Err: "+ JSON.stringify(err);
                 logger.error(logMsg);
-            
+
             } else // we have managed to update. We are getting the full info for the org as the result
             {
                 log2File("OK", "Updated :" + JSON.stringify(result.result.display_name),"");
@@ -437,20 +437,11 @@ async function getLocationData(allDataJoined) {
             lng = 3.726389;
 
         if(res.candidates.length > 0) {
-
           lat = res.candidates[0].location.y;
           lng = res.candidates[0].location.x;
-
         }else{
-          logMsg = "Location: No latlng results found= "+ allDataJoined[i].name + " main_adddress= ", allDataJoined[i].main_adddress + " Setting it to Troll A platform in the north sea";          
+          logMsg = "Location: No latlng results found= "+ allDataJoined[i].name + " main_adddress= ", allDataJoined[i].main_adddress + " Setting it to Troll A platform in the north sea";
           logger.error(logMsg);
-    
-          allDataJoined[i].locationData = {
-            latlng: {
-              lat: 60.645556,
-              lng: 3.726389
-            }
-          }
         }
 
         allDataJoined[i].locationData = {
@@ -509,9 +500,9 @@ var logRecord = {
 
 
 /** logger
- * Logging all stuff 
+ * Logging all stuff
  *
- * 
+ *
  */
 const logger = createLogger({
   // change level if in dev environment versus production
@@ -1161,4 +1152,3 @@ getAllData()
 
 
   })
-
