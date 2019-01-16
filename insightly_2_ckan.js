@@ -225,7 +225,8 @@ function ckan_create_org_axios(newOrg) {
         "insightly_id": newOrg.insightly_id,
         "insightly_tags": newOrg.insightly_tags,
         "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
-        "employee_resource_id" : newOrg.employee_resource_id
+        "locationData" : newOrg.locationData,
+        "urbalurbaData" : newOrg.urbalurbaData        
       };
 
       axios.defaults.baseURL = CKANhost;
@@ -297,6 +298,8 @@ function ckan_update_org_axios(newOrg) {
       "insightly_id": newOrg.insightly_id,
       "insightly_tags": newOrg.insightly_tags,
       "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
+      "locationData" : newOrg.locationData,
+      "urbalurbaData" : newOrg.urbalurbaData,           
       "employee_resource_id" : newOrg.employee_resource_id,
       "id" : newOrg.CKAN_ID,
     };
@@ -430,6 +433,10 @@ function updateCKANorganizations(organizationArray) {
  * Loop trugh all organizations and add geolocation data to organisation
  * Adds all geolocation data to a new tag under the organisation.
  * geo-data includes latlng coordinates to organisation HQ and ????
+ * 
+ * Contents of the tag is generated each time data is pushed to CKAN
+ * 
+ * Tag name is "locationData"
  * Tag has the following format:
  *    {
  *      latlng: {
@@ -1100,9 +1107,11 @@ getAllData()
 
     tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
 
-    updateCKANorganizations(allDataJoined);
-
     await getLocationData(allDataJoined); // Adds geolocation data to organisations
+
+    updateCKANorganizations(allDataJoined); //Push all data to CKAN
+
+    
 
 
 
