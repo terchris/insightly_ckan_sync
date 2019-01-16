@@ -1,10 +1,6 @@
 /**
  * insightly_2_ckan
- * terchris/30Oct
- *
- * Latest: changing org tye and insigthly tags. This requires change to terchris/ckanext-scheming
- *
- * Latest: started dev for testing if org needs to be sent to ckan
+ * terchris/16Jan19
  *
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
@@ -36,34 +32,46 @@ let request = require('request');
 const axios = require("axios"); //to install it: npm install axios
 var fs = require('fs'); // filesystem write
 var config = require('config');
-//TODO: remove var CKAN = require('ckan'); //The ckan client
-var throttledQueue = require('throttled-queue');
+var throttledQueue = require('throttled-queue'); // preventing overload on ckan server
 
+/**  For logging **/
+const { createLogger, format, transports } = require('winston');
+const path = require('path');
 
+const localLogDir = config.get('LOG.localLogDir');
 
+const insightlyRunLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyRunLogFile'));
+const insightlyERRLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyERRLogFile'));
+const insightlyJoinedOutput = path.join(localLogDir,config.get('Insightly.Log.insightlyJoinedOutput'));
 
+/** Insightly related config stuff  **/ 
 const insightlyAPIKey  = config.get('Insightly.Config.insightlyAPIKey');
 const insightlyURLGetOrgByTag = config.get('Insightly.Config.insightlyURLGetOrgByTag');
-//OLD const insightlyURLGetOrgByTag = "https://api.insight.ly/v2.2/Organisations/Search?tag=CKAN-export&top=500";
 const insightlyURLgetContactByTag = config.get('Insightly.Config.insightlyURLgetContactByTag');
-const insightlyRunLogFile = config.get('Insightly.Output.insightlyRunLogFile');
-const insightlyERRLogFile = config.get('Insightly.Output.insightlyERRLogFile');
-const insightlyJoinedOutput = config.get('Insightly.Output.insightlyJoinedOutput');
 
+/**  CKAN related config stuff **/
 var ckanAPIkey = config.get('CKAN.Config.ckanAPIkey');
 // ckanAPIkey = "d466e11f-60f4-4ef3-85b5-9026215d1b22"; //DEBUG: for local ubuntu VM
-
 const CKANhost = config.get('CKAN.Config.CKANhost');
 // const CKANhost = "http://172.16.1.96"; //DEBUG: for locak ubunti VM
 // const CKANhost = "http://localhost:5000"; //DEBUG: for local docker dcker
-
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
 
-// for throtteling update/create requests to CKAN
+/**  for throtteling update/create requests to CKAN **/
 var throttleParalell = config.get('CKAN.Config.throttleParalell'); // requests in paralell
 var throttleSpacing = config.get('CKAN.Config.throttleSpacing'); // timing between requets 1000 = 1 second
 var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the queue
 //var throttle = throttledQueue(1, 1000); // create the queue
+
+
+
+/** Set up stuff */
+
+// Create the log directory if it does not exist
+if (!fs.existsSync(localLogDir)) {
+  fs.mkdirSync(localLogDir);
+}
+
 
 /****** START CKAN related stuff  */
 
