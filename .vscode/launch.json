@@ -8,8 +8,16 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch insightly_2_ckan",
-            "program": "${workspaceFolder}/insightly_2_ckan.js"
+            "name": "i2c insightly_2_ckan",
+            "program": "${workspaceFolder}/insightly_2_ckan.js",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "logtest",
+            "program": "${workspaceFolder}/logtest.js",
+            "outputCapture": "std"
         }
     ]
 }

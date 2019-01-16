@@ -36,9 +36,13 @@ var throttledQueue = require('throttled-queue'); // preventing overload on ckan 
 
 /**  For logging **/
 const { createLogger, format, transports } = require('winston');
+const env = process.env.NODE_ENV || 'development';
+
 const path = require('path');
 
 const localLogDir = config.get('LOG.localLogDir');
+const masterLogFile = path.join(localLogDir,config.get('LOG.masterLogFile'));
+
 
 const insightlyRunLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyRunLogFile'));
 const insightlyERRLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyERRLogFile'));
@@ -96,11 +100,15 @@ function tidyOrganisations(orgArray) {
       if (orgArray[i].organization_type.length < 1) { //organization_type is blank -> fix it
         orgArray[i].organization_type = "private";
         log2File("ERR", "Organisation "+ orgArray[i].name + " (no " + i + ") is missing organization_type. setting it to a private ",orgArray[i]);
+        logMsg = "insightly: Organisation "+ orgArray[i].name + " (no " + i + ") is missing organization_type. setting it to a private ",orgArray[i];
+        logger.error(logMsg);
       }
 
       if (orgArray[i].description == null ) { //description is blank -> fix it
         orgArray[i].description = ".";
         log2File("WARN", "Organisation "+ orgArray[i].name + " (no " + i + ") is missing description. setting it to a dot ",orgArray[i]);
+        logMsg = "insightly: Organisation "+ orgArray[i].name + " (no " + i + ") is missing description. setting it to a dot ",orgArray[i];
+        logger.warn(logMsg);
       }
 
 
@@ -185,13 +193,19 @@ function ckan_create_org_axios(newOrg) {
 
 
     log2File("OK", "Trying to AXIOS create: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
+    logMsg = "CKAN: Trying to AXIOS create: "+JSON.stringify(CKAN_urbalurba_import_record.title);
+    logger.info(logMsg);
+
+    "Organisation "+ orgArray[i].name + " (no " + i + ") is missing description. setting it to a dot ",orgArray[i]
 
     throttle(function () { // queue all requests
       axios.post('/api/3/action/organization_create', CKAN_urbalurba_import_record)
 
         .then(function (response) {
-          console.log(response);
           log2File("OK", "Created AXIOS:" + JSON.stringify(response.data.result),"");
+          logMsg = "CKAN: Created AXIOS:" + JSON.stringify(response.data.result);
+          logger.info(logMsg);
+      
         })
         .catch(function (error) {
           if (error.response) {
@@ -261,13 +275,17 @@ function ckan_update_org_axios(newOrg) {
 
 
   log2File("OK", "Trying to AXIOS update: "+JSON.stringify(CKAN_urbalurba_import_record.title),"");
+  logMsg = "CKAN: Trying to AXIOS update: "+JSON.stringify(CKAN_urbalurba_import_record.title);
+  logger.info(logMsg);
 
   throttle(function () { // queue all requests
     axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
 
       .then(function (response) {
-        console.log(response);
         log2File("OK", "Updated AXIOS:" + JSON.stringify(response.data.result),"");
+        logMsg = "CKAN: Updated AXIOS:" + JSON.stringify(response.data.result);
+        logger.info(logMsg);
+      
       })
       .catch(function (error) {
         if (error.response) {
@@ -336,14 +354,23 @@ function ckan_update_org(newOrg) {
 
 
     log2File("OK", "Trying to update: "+JSON.stringify(CKAN_parameters.title),"");
+    logMsg = "CKAN: Trying to update: "+JSON.stringify(CKAN_parameters.title);
+    logger.info(logMsg);
+
 
          client.action(CKAN_API, CKAN_parameters,
            function (err, result) {
             if (err != null) { //some error - try figure out what
                 log2File("ERR", "ERROR on Update :" + JSON.stringify(result),err);
+                logMsg = "CKAN: ERROR on Update :" + JSON.stringify(result)+ " Err: "+ JSON.stringify(err);
+                logger.error(logMsg);
+            
             } else // we have managed to update. We are getting the full info for the org as the result
             {
                 log2File("OK", "Updated :" + JSON.stringify(result.result.display_name),"");
+                logMsg = "CKAN: Updated :" + JSON.stringify(result.result.display_name);
+                logger.info(logMsg);
+
             }
 
         });
@@ -426,7 +453,9 @@ async function getLocationData(allDataJoined) {
           };
 
         }else{
-          console.log("No latlng results found= ",allDataJoined[i].name , " main_adddress= ", allDataJoined[i].main_adddress ," Setting it to Troll A platform in the north sea");
+          logMsg = "Location: No latlng results found= "+ allDataJoined[i].name + " main_adddress= ", allDataJoined[i].main_adddress + " Setting it to Troll A platform in the north sea";          
+          logger.error(logMsg);
+    
           allDataJoined[i].locationData = {
             latlng: {
               lat: 60.645556,
@@ -436,7 +465,8 @@ async function getLocationData(allDataJoined) {
         }
       })
       .catch(function(error) {
-        console.log(error);
+        logMsg = "Location: some error: "+ JSON.stringify(error);
+        logger.error(logMsg);
       });
   }
 }
@@ -481,6 +511,34 @@ var logRecord = {
 
 }
 
+
+/** logger
+ * Logging all stuff 
+ *
+ * 
+ */
+const logger = createLogger({
+  // change level if in dev environment versus production
+  level: env === 'development' ? 'debug' : 'info',
+  format: format.combine(
+    format.timestamp({
+      format: 'YYYY-MM-DD HH:mm:ss'
+    }),
+    format.json()
+  ),
+  transports: [
+    new transports.Console({
+      level: 'info',
+      format: format.combine(
+        format.colorize(),
+        format.printf(
+          info => `${info.timestamp} ${info.level}: ${info.message}`
+        )
+      )
+    }),
+    new transports.File({ filename: masterLogFile })
+  ]
+});
 
 /*** emptyContact
  * used by joinOrgContact when a organisation does not have a corresponding contact
@@ -589,6 +647,9 @@ function joinOrgContact(lookupTable, mainTable, lookupKey, mainKey, select) {
     } else {
       output.push(select(y, emptyContact())); // well. if they dont have a main contact. Add them anyway
       log2File("ERR", "Organisation "+ y.ORGANISATION_NAME + " (no " + j + ") is missing =SBNHovedkontakt ",y);
+      logMsg = "insightly: Organisation "+ y.ORGANISATION_NAME + " (no " + j + ") is missing =SBNHovedkontakt : " + JSON.stringify(y);
+      logger.error(logMsg);
+
     }
   }
   return output;
@@ -619,6 +680,9 @@ function joinInsightlyCKAN(lookupTable, mainTable, lookupKey, mainKey, select) {
     } else {
       output.push(select(y, {id: ""} )); // the org does not exist in ckan
       log2File("OK", "joinInsightlyCKAN Organisation "+ y.name + " (no " + j + ") will is new and will be created ",y);
+      logMsg = "insightly: Organisation "+ y.name + " (no " + j + ") will is new and will be created " + JSON.stringify(y);
+      logger.info(logMsg);
+
     }
   }
   return output;
@@ -644,6 +708,9 @@ function insightlyGetOrgByTag() {
     })
     .catch(function (error) {
       log2File("ERR", "insightlyGetOrgByTag", error.response.statusText);
+      logMsg = "insightly: insightlyGetOrgByTag " + error.response.statusText;
+      logger.error(logMsg);
+
     });
 };
 
@@ -660,6 +727,9 @@ function insightlyGetContactByTag() {
     })
     .catch(function (error) {
       log2File("ERR", "insightlyGetContactByTag", error.response.statusText);
+      logMsg = "insightly: insightlyGetContactByTag", error.response.statusText;
+      logger.error(logMsg);
+
     });
 };
 
@@ -675,6 +745,9 @@ function ckanGetOrganisations() {
     })
     .catch(function (error) {
       log2File("ERR", "ckanGetOrganisations", error.response.statusText);
+      logMsg = "CKAN: ckanGetOrganisations", error.response.statusText;
+      logger.error(logMsg);
+
     });
 };
 
@@ -975,13 +1048,18 @@ function insightlyIsMember(orgRecord){
  *
  */
 
-//TODO: remove var client = new CKAN.Client(CKANhost, ckanAPIkey); // initiate connection to CKAN
+
+logger.info('Staring insightly_2_ckan');
+
 
 
 getAllData()
   .then(async ([insightlyOrgs, insightlyContacts, ckanOrgs]) => {
 
     log2File("OK", "Insightly Organisations ("+ insightlyOrgs.length + ") / Insightly contacts ("+ insightlyContacts.length + ") / CKAN Organisations (" + ckanOrgs.length + ") read successfully","");
+    logMsg = "insightly: Insightly Organisations ("+ insightlyOrgs.length + ") / Insightly contacts ("+ insightlyContacts.length + ") / CKAN Organisations (" + ckanOrgs.length + ") read successfully";
+    logger.info(logMsg);
+
     // Fordebugging in the console do: insightlyOrgs.find(org => org.ORGANISATION_NAME === 'ABAX' );
 
     var insightlyJoinedOrganisation = joinOrgContact(insightlyContacts, insightlyOrgs, "DEFAULT_LINKED_ORGANISATION", "ORGANISATION_ID", function (organisasjonen, kontakten) {
@@ -1018,10 +1096,18 @@ getAllData()
 // Fordebugging in the console do: insightlyJoinedOrganisation.find(org => org.title === 'ABAX' );
 
     if (insightlyOrgs.length > insightlyJoinedOrganisation.length)  //If there are more organisations than the joined result. Then report the error
+    {
       log2File("ERR", "Missing contacts","");
+      logMsg = "insightly: Joining insightly contacte = Missing contacts";
+      logger.error(logMsg);
+    }
     else
+    {
       log2File("OK", "Joined Organisations and contacts","");
+      logMsg = "insightly: Joined Organisations and contacts";
+      logger.info(logMsg);
 
+    }
 
       var allDataJoined = joinInsightlyCKAN(ckanOrgs, insightlyJoinedOrganisation, "insightly_id", "insightly_id", function (theInsightlyOrg, theCkanOrg ) {
         return {
@@ -1057,10 +1143,13 @@ getAllData()
       });
   // Fordebugging in the console do: allDataJoined.find(org => org.title === 'ABAX' );
 
+  /* for debugging
     fs.writeFile(insightlyJoinedOutput, JSON.stringify(allDataJoined), function (err) {
       if (err) throw err;
       log2File("OK", "Joined result written to file: " +insightlyJoinedOutput,"");
       });
+  */
+
 
     tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
 
@@ -1076,3 +1165,4 @@ getAllData()
 
 
   })
+
