@@ -45,6 +45,6 @@ const logger = createLogger({
   ]
 });
 
-logger.info('2Hello world');
-logger.warn('2Warning message');
-logger.debug('2Debugging info');
+logger.info( '3Hello world',{system: 'CKAN'});
+logger.warn('3Warning message',{system: 'insightly'});
+logger.debug('3Debugging info',{system: 'location'});
