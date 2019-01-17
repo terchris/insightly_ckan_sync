@@ -32,7 +32,7 @@ let request = require('request');
 const axios = require("axios"); //to install it: npm install axios
 var fs = require('fs'); // filesystem write
 var config = require('config');
-var throttledQueue = require('throttled-queue'); // preventing overload on ckan server
+
 
 /**  For logging **/
 const { createLogger, format, transports } = require('winston');
@@ -44,9 +44,6 @@ const localLogDir = config.get('LOG.localLogDir');
 const masterLogFile = path.join(localLogDir,config.get('LOG.masterLogFile'));
 
 
-const insightlyRunLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyRunLogFile'));
-const insightlyERRLogFile = path.join(localLogDir,config.get('Insightly.Log.insightlyERRLogFile'));
-const insightlyJoinedOutput = path.join(localLogDir,config.get('Insightly.Log.insightlyJoinedOutput'));
 
 /** Insightly related config stuff  **/
 const insightlyAPIKey  = config.get('Insightly.Config.insightlyAPIKey');
@@ -60,12 +57,6 @@ const CKANhost = config.get('CKAN.Config.CKANhost');
 // const CKANhost = "http://172.16.1.96"; //DEBUG: for locak ubunti VM
 // const CKANhost = "http://localhost:5000"; //DEBUG: for local docker dcker
 const ckanURLgetOrganisations = config.get('CKAN.Config.ckanURLgetOrganisations');
-
-/**  for throtteling update/create requests to CKAN **/
-var throttleParalell = config.get('CKAN.Config.throttleParalell'); // requests in paralell
-var throttleSpacing = config.get('CKAN.Config.throttleSpacing'); // timing between requets 1000 = 1 second
-var throttle = throttledQueue(throttleParalell, throttleSpacing); // create the queue
-//var throttle = throttledQueue(1, 1000); // create the queue
 
 
 
@@ -115,6 +106,9 @@ function hasValue(data){
  * removes illegal characters. Cheks for missing fields and try to fix stuff
 */
 function tidyOrganisations(orgArray) {
+
+  logger.info('Start tidying mamber data', {system: 'c2i'});
+
 
   for (var i = 0; i < orgArray.length; i++) {
 
@@ -230,6 +224,8 @@ function tidyOrganisations(orgArray) {
 
   }
 
+  logger.info('End tidying member data', {system: 'c2i'});
+
 }
 
 
@@ -238,7 +234,7 @@ function tidyOrganisations(orgArray) {
  *
  * see http://docs.ckan.org/en/latest/api/#ckan.logic.action.create.organization_create
  */
-function ckan_create_org_axios(newOrg) {
+async function ckan_create_org_axios(newOrg) {
 
 
   var CKAN_urbalurba_import_record =
@@ -270,41 +266,39 @@ function ckan_create_org_axios(newOrg) {
       axios.defaults.baseURL = CKANhost;
       axios.defaults.headers.common['Authorization'] = ckanAPIkey;
 
-
-
-    logMsg = "Trying to AXIOS create: "+JSON.stringify(CKAN_urbalurba_import_record.title);
-    logger.info(logMsg, {system: 'CKAN'});
-
-    //hæ ?"Organisation "+ orgArray[i].name + " (no " + i + ") is missing description. setting it to a dot ",orgArray[i]
-
-    throttle(function () { // queue all requests
-      axios.post('/api/3/action/organization_create', CKAN_urbalurba_import_record)
+    
+      await axios.post('/api/3/action/organization_create', CKAN_urbalurba_import_record)
 
         .then(function (response) {
-          logMsg = "Created AXIOS:" + JSON.stringify(response.data.result);
-          logger.info(logMsg, {system: 'CKAN'});
+          logMsg = "Created :" + JSON.stringify(CKAN_urbalurba_import_record.title) + " CKAN ID=" + JSON.stringify(response.data.result.id) + " CKAN revision ID=" + JSON.stringify(response.data.result.revision_id) + " First created: " + JSON.stringify(response.data.result.created);
+          logger.info(logMsg, { system: 'CKAN' });
+    //TODO: store revision_id and id in insightly so that we can check if someoe updated using the CKAN web interface
         })
         .catch(function (error) {
           if (error.response) {
             // The request was made and the server responded with a status code
             // that falls out of the range of 2xx
-            console.log(error.response.data);
-            console.log(error.response.status);
-            console.log(error.response.headers);
+            logMsg = "Create failed for: "+ JSON.stringify(CKAN_urbalurba_import_record.title)   +" error.response.data:" + JSON.stringify(error.response.data);
+            logger.error(logMsg, { system: 'CKAN' });
+            logMsg = "Create AXIOS failed! error.response.status:" + JSON.stringify(error.response.status);
+            logger.error(logMsg, { system: 'CKAN' });
+            logMsg = "Create AXIOS failed! error.response.headers:" + JSON.stringify(error.response.headers);
+            logger.error(logMsg, { system: 'CKAN' });
           } else if (error.request) {
             // The request was made but no response was received
             // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
             // http.ClientRequest in node.js
-            console.log(error.request);
+            logMsg = "Create AXIOS failed! error.request:" + JSON.stringify(error.request);
+            logger.error(logMsg, { system: 'CKAN' });
           } else {
             // Something happened in setting up the request that triggered an Error
-            console.log('Error', error.message);
+            logMsg = "Create AXIOS failed! error.message:" + JSON.stringify(error.message);
+            logger.error(logMsg, { system: 'CKAN' });
           }
-          console.log(error.config);
+          logMsg = "Create AXIOS failed! error.config:" + JSON.stringify(error.config);
+          logger.error(logMsg, { system: 'CKAN' });
         });
-    });
-
-
+    
 };
 
 
@@ -316,72 +310,70 @@ function ckan_create_org_axios(newOrg) {
 /** ckan_update_org_axios
  * update using axios
  */
-function ckan_update_org_axios(newOrg) {
+async function ckan_update_org_axios(newOrg) {
 
   var CKAN_urbalurba_import_record =
   {
-      "title": newOrg.title,
-      "name": newOrg.name,
-      "slogan": newOrg.slogan,
-      "website": newOrg.website,
-      "organization_type": newOrg.organization_type,
-      "description": newOrg.description,
-      "image_url": newOrg.image_url,
-      "member": newOrg.member,
-      "organization_number": newOrg.organization_number,
-      "main_adddress": newOrg.main_adddress,
-      "phone": newOrg.phone,
-      "contact_name": newOrg.contact_name,
-      "contact_title": newOrg.contact_title,
-      "contact_email": newOrg.contact_email,
-      "contact_mobile": newOrg.contact_mobile,
-      "member_tags": newOrg.member_tags,
-      "segment": newOrg.segment,
-      "insightly_id": newOrg.insightly_id,
-      "insightly_tags": newOrg.insightly_tags,
-      "sustainable_development_goals" : newOrg.Sustainable_Development_Goals,
-      "locationData" : newOrg.locationData,
-      "urbalurbaData" : newOrg.urbalurbaData,
-      "employee_resource_id" : newOrg.employee_resource_id,
-      "id" : newOrg.CKAN_ID,
-    };
+    "title": newOrg.title,
+    "name": newOrg.name,
+    "slogan": newOrg.slogan,
+    "website": newOrg.website,
+    "organization_type": newOrg.organization_type,
+    "description": newOrg.description,
+    "image_url": newOrg.image_url,
+    "member": newOrg.member,
+    "organization_number": newOrg.organization_number,
+    "main_adddress": newOrg.main_adddress,
+    "phone": newOrg.phone,
+    "contact_name": newOrg.contact_name,
+    "contact_title": newOrg.contact_title,
+    "contact_email": newOrg.contact_email,
+    "contact_mobile": newOrg.contact_mobile,
+    "member_tags": newOrg.member_tags,
+    "segment": newOrg.segment,
+    "insightly_id": newOrg.insightly_id,
+    "insightly_tags": newOrg.insightly_tags,
+    "sustainable_development_goals": newOrg.Sustainable_Development_Goals,
+    "locationData": newOrg.locationData,
+    "urbalurbaData": newOrg.urbalurbaData,
+    "employee_resource_id": newOrg.employee_resource_id,
+    "id": newOrg.CKAN_ID,
+  };
 
   axios.defaults.baseURL = CKANhost;
   axios.defaults.headers.common['Authorization'] = ckanAPIkey;
 
+  await axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
 
-
-  logMsg = "Trying to AXIOS update: "+JSON.stringify(CKAN_urbalurba_import_record.title);
-  logger.info(logMsg, {system: 'CKAN'});
-
-  throttle(function () { // queue all requests
-    axios.post('/api/3/action/organization_patch', CKAN_urbalurba_import_record)
-
-      .then(function (response) {
-        logMsg = "Updated AXIOS:" + JSON.stringify(response.data.result);
-        logger.info(logMsg, {system: 'CKAN'});
-
-      })
-      .catch(function (error) {
-        if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.log(error.response.data);
-          console.log(error.response.status);
-          console.log(error.response.headers);
-        } else if (error.request) {
-          // The request was made but no response was received
-          // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-          // http.ClientRequest in node.js
-          console.log(error.request);
-        } else {
-          // Something happened in setting up the request that triggered an Error
-          console.log('Error', error.message);
-        }
-        console.log(error.config);
-      });
-  });
-
+    .then(function (response) {
+      logMsg = "Updated :" + JSON.stringify(CKAN_urbalurba_import_record.title) + " CKAN ID=" + JSON.stringify(response.data.result.id) + " CKAN revision ID=" + JSON.stringify(response.data.result.revision_id) + " First created: " + JSON.stringify(response.data.result.created);
+      logger.info(logMsg, { system: 'CKAN' });
+//TODO: store revision_id in insightly so that we can check if someoe updated using the CKAN web interface
+    })
+    .catch(function (error) {
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        logMsg = "Update failed for: "+ JSON.stringify(CKAN_urbalurba_import_record.title)   +" error.response.data:" + JSON.stringify(error.response.data);
+        logger.error(logMsg, { system: 'CKAN' });
+        logMsg = "Update AXIOS failed! error.response.status:" + JSON.stringify(error.response.status);
+        logger.error(logMsg, { system: 'CKAN' });
+        logMsg = "Update AXIOS failed! error.response.headers:" + JSON.stringify(error.response.headers);
+        logger.error(logMsg, { system: 'CKAN' });
+      } else if (error.request) {
+        // The request was made but no response was received
+        // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+        // http.ClientRequest in node.js
+        logMsg = "Update AXIOS failed! error.request:" + JSON.stringify(error.request);
+        logger.error(logMsg, { system: 'CKAN' });
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        logMsg = "Update AXIOS failed! error.message:" + JSON.stringify(error.message);
+        logger.error(logMsg, { system: 'CKAN' });
+      }
+      logMsg = "Update AXIOS failed! error.config:" + JSON.stringify(error.config);
+      logger.error(logMsg, { system: 'CKAN' });
+    });
 
 };
 
@@ -396,22 +388,25 @@ function ckan_update_org_axios(newOrg) {
  * then there s no point updating the same data
  * (this asumes that only edit source is insightly. NOT testing if ckan has been updated)
  */
-function updateCKANorganizations(organizationArray) {
-  //debugger;
+async function updateCKANorganizations(organizationArray) {
+  
+  logger.info('Start pushing members from insightly to CKAN', {system: 'c2i'});
+
   for (var i = 0; i < organizationArray.length; i++) {
     org = organizationArray[i];
 
       if (org.CKAN_ID == "")
-        ckan_create_org_axios(org); // Create if the org is not in CKAN
+        await ckan_create_org_axios(org); // Create if the org is not in CKAN
       else
         if (1==1) // for debugging
         //if (org.ckan_source_insightly_org_date_updated_utc != org.insightly_source_insightly_org_date_updated_utc)
         {
-          ckan_update_org_axios(org);
+          await ckan_update_org_axios(org);
         }
 
 
   }
+  logger.info('Finished pushing members from insightly to CKAN', {system: 'c2i'});
 
 }
 
@@ -437,6 +432,12 @@ function updateCKANorganizations(organizationArray) {
  *    }
  */
 async function getLocationData(allDataJoined) {
+
+  var noGPS = 0;
+
+  logMsg = "Getting GPS positions for : "+ allDataJoined.length + " members";
+  logger.info(logMsg, {system: 'location'});
+
   for(var i = 0; i < allDataJoined.length; i++) {
     var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?outSr=4326&forStorage=false&outFields=*&maxLocations=20&f=json&address=' + encodeURI(allDataJoined[i].main_adddress);
 
@@ -449,16 +450,23 @@ async function getLocationData(allDataJoined) {
         if(res.candidates.length > 0) {
           lat = res.candidates[0].location.y;
           lng = res.candidates[0].location.x;
+          
+          logMsg = "GPS position found for = "+ allDataJoined[i].name + " main_adddress= "+ allDataJoined[i].main_adddress + " lat="+ lat + " lng="+ lng;
+          logger.verbose(logMsg, {system: 'location'});
+          
         }else{
+          
+          noGPS = noGPS +1;
           logMsg = "No latlng results found= "+ allDataJoined[i].name + " main_adddress= "+ allDataJoined[i].main_adddress + " Setting it to Troll A platform in the north sea";
           logger.error(logMsg, {system: 'location'});
+          
         }
 
         allDataJoined[i].locationData = {
           latlng: {
             lat: lat,
             lng: lng
-          }
+          }          
         };
       })
       .catch(function(error) {
@@ -466,6 +474,17 @@ async function getLocationData(allDataJoined) {
         logger.error(logMsg, {system: 'location'});
       });
   }
+
+  if (noGPS>0){
+    logMsg = "There are: "+ noGPS + " members that has wrong GPS position" ;
+    logger.error(logMsg, {system: 'insightly'});
+
+  } else {
+    logger.info('Found GPS positions for all members', {system: 'insightly'});
+  }
+
+
+
 }
 
 
@@ -1130,10 +1149,11 @@ getAllData()
     tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
 
     await getLocationData(allDataJoined); // Adds geolocation data to organisations
+    
+    await updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
-    updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
-
+    logger.info('Stoppig insightly_2_ckan ', {system: 'c2i'});
 
 
 
