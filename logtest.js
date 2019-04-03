@@ -1,6 +1,7 @@
 
 'use strict';
 const { createLogger, format, transports } = require('winston');
+
 const fs = require('fs');
 const path = require('path');
 
@@ -44,6 +45,9 @@ const logger = createLogger({
     new transports.File({ filename: masterLogFile })
   ]
 });
+
+
+
 
 logger.info( '3Hello world',{system: 'CKAN'});
 logger.warn('3Warning message',{system: 'insightly'});

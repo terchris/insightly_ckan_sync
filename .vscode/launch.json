@@ -18,6 +18,13 @@
             "name": "logtest",
             "program": "${workspaceFolder}/logtest.js",
             "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "2logtest",
+            "program": "${workspaceFolder}/logtest2.js",
+            "outputCapture": "std"
         }
     ]
 }
