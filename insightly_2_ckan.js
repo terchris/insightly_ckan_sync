@@ -221,6 +221,9 @@ function tidyOrganisations(orgArray) {
       if (orgArray[i].organization_type == "government") orgArray[i].organization_type = "public";
 */
 
+/* GDPR Do not sync email and mobile */
+  orgArray[i].contact_email = ""
+  orgArray[i].contact_mobile = ""      
 
   }
 
