@@ -1,6 +1,7 @@
 /**
  * insightly_2_ckan
  * terchris/16Jan19
+ * terchris/12may19 - adding write to firestore
  *
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
@@ -27,6 +28,20 @@
  * node insightly_2_ckan.js
  *
  */
+
+var admin = require("firebase-admin");
+var serviceAccount = require('./config/urbalurbacore-firebase-adminsdk-0svno-20cb09038a.json');
+
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://urbalurbacore.firebaseio.com"
+});
+
+var db = admin.firestore();
+var orgRef = db.collection("catalog_organisation");
+// end firestore stuff
+
 
 let request = require('request');
 const axios = require("axios"); //to install it: npm install axios
@@ -1060,6 +1075,153 @@ function insightlyIsMember(orgRecord){
 }
 
 
+
+/************ FIRESTORE stuff */
+
+
+/** string2array 
+ * converts string to array and removes leading and tailing blanks
+*/
+function string2array(mystring){
+  var tempArrray = new Array();
+  if (mystring){
+    tempArrray = mystring.split(",");
+
+    // we got the array. Now remove blanks 
+    for(var i = 0; i < tempArrray.length; i++) {
+      tempArrray[i] = tempArrray[i].trim();
+    }    
+  } 
+  return tempArrray
+}
+
+/** orgType2array
+ * converts a single string value to an single item in an array
+ */
+function orgType2array(mystring){
+  var tempArrray = new Array();
+  mystring = mystring.trim(); //remove blanks if any
+  tempArrray.push(mystring); 
+  
+  return tempArrray
+}
+
+/** 
+ * creates a new org in firestore
+ *
+ */
+function firestore_create_orgrecord(newOrg) {
+  
+  var FIRESTORE_urbalurba_import_record = new Array();
+
+  FIRESTORE_urbalurba_import_record =
+  {
+    "website": newOrg.website,
+    "organisationTags": newOrg.member_tags,
+    "categories": {
+        "SDG": string2array(newOrg.sustainable_development_goals),
+        "segment": string2array(newOrg.organization_segments),
+        "challenges": string2array(newOrg.problems_solved),       
+        "organizationType": orgType2array(newOrg.organization_type)
+
+    },
+    "contacts": [{
+        "mobile": newOrg.contact_mobile,
+        "title": newOrg.contact_title,
+        "email": newOrg.contact_email,
+        "name": newOrg.contact_name
+    }
+    ],
+
+    "foreignKeys": {
+        "ckan_id": newOrg.CKAN_ID,
+        "organizationNumber": newOrg.organization_number,
+        "insightly_id": newOrg.insightly_id
+    },
+    "summary": newOrg.description,
+    "slogan": newOrg.slogan,
+    "phone": newOrg.phone,
+    "idName": newOrg.name,
+    "image": {
+        "large": "",
+        "medium": newOrg.image_url,
+        "small": ""
+    },
+    "updates": {
+        "ckan_org_date_updated_utc": "2019-03-13 08:37:38",
+        "insightly_org_date_updated_utc": newOrg.insightly_source_insightly_org_date_updated_utc,
+        "insightly_contact_date_updated_utc" : newOrg.insightly_source_insightly_contact_date_updated_utc
+    },
+    "networkMemberships": [
+        "SBN"
+    ],
+    "location": {
+        "shippingAddress": newOrg.main_adddress
+    },
+    "displayName": newOrg.title
+};
+/*
+  if (newOrg.locationData.latlng.lat) {
+    FIRESTORE_urbalurba_import_record = {
+      "location": {
+        "gps": {
+          "_latitude": newOrg.locationData.latlng.lat,
+          "_longitude": newOrg.locationData.latlng.lng
+        }
+      }
+    }
+  }
+*/
+//console.log(FIRESTORE_urbalurba_import_record);
+return FIRESTORE_urbalurba_import_record
+};
+
+
+
+
+
+
+/** updateFIRESTOREorganizations
+ * Loop trugh all organizations and publish them to firestore
+ * Existing organizations are updated and new are created
+ * IF the organisation or contact has not been updated in insightly since last export
+ * then there s no point updating the same data
+ * (this asumes that only edit source is insightly. NOT testing if ckan has been updated)
+ */
+function updateFIRESTOREorganizations(organizationArray) {
+  
+  logger.info('Start pushing members from insightly to firestore', {system: 'c2i'});
+
+
+
+
+  for (var i = 0; i < organizationArray.length; i++) {
+    org = organizationArray[i];
+    orgRef.doc().set(firestore_create_orgrecord(org))
+      .then(function () {
+        console.log("OK: ");
+      })
+      .catch(function (error) {
+        console.log("ERR: ");
+      });
+  }
+
+  logger.info('Finished pushing members from insightly to firestore', {system: 'c2i'});
+
+}
+
+
+
+
+
+
+
+
+
+/**** end FIRESTORE stuff */
+
+
+
 /**** Main code start
  *
  */
@@ -1150,10 +1312,16 @@ getAllData()
 
 
     tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
+    //fs.writeFile('allDataJoined.json',  JSON.stringify(allDataJoined));
 
-    await getLocationData(allDataJoined); // Adds geolocation data to organisations
+//myTmp = string2array(allDataJoined[6].Sustainable_Development_Goals);
+//myTmp2 = orgType2array(allDataJoined[6].organization_type);
+
+//    await getLocationData(allDataJoined); // Adds geolocation data to organisations
     
-    await updateCKANorganizations(allDataJoined); //Push all data to CKAN
+    //await updateCKANorganizations(allDataJoined); //Push all data to CKAN
+
+    updateFIRESTOREorganizations(allDataJoined); //Push all data to firestore
 
 
     logger.info('Stoppig insightly_2_ckan ', {system: 'c2i'});
