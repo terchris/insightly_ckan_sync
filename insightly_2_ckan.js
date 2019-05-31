@@ -1119,7 +1119,7 @@ function firestore_create_orgrecord(newOrg) {
     "website": newOrg.website,
     "organisationTags": newOrg.member_tags,
     "categories": {
-        "SDG": string2array(newOrg.sustainable_development_goals),
+        "SDG": string2array(newOrg.Sustainable_Development_Goals),
         "segment": string2array(newOrg.organization_segments),
         "challenges": string2array(newOrg.problems_solved),       
         "organizationType": orgType2array(newOrg.organization_type)
@@ -1314,12 +1314,11 @@ getAllData()
     tidyOrganisations(allDataJoined); //remove illegal chars and allert missing fields
     //fs.writeFile('allDataJoined.json',  JSON.stringify(allDataJoined));
 
-//myTmp = string2array(allDataJoined[6].Sustainable_Development_Goals);
-//myTmp2 = orgType2array(allDataJoined[6].organization_type);
 
-//    await getLocationData(allDataJoined); // Adds geolocation data to organisations
+
+    //await getLocationData(allDataJoined); // Adds geolocation data to organisations
     
-    //await updateCKANorganizations(allDataJoined); //Push all data to CKAN
+   // await updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
     updateFIRESTOREorganizations(allDataJoined); //Push all data to firestore
 
