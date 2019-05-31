@@ -1117,12 +1117,13 @@ function firestore_create_orgrecord(newOrg) {
   FIRESTORE_urbalurba_import_record =
   {
     "website": newOrg.website,
-    "organisationTags": newOrg.member_tags,
+    "organizationTags": string2array(newOrg.member_tags),
     "categories": {
         "SDG": string2array(newOrg.Sustainable_Development_Goals),
         "segment": string2array(newOrg.organization_segments),
         "challenges": string2array(newOrg.problems_solved),       
-        "organizationType": orgType2array(newOrg.organization_type)
+        "organizationType": orgType2array(newOrg.organization_type),
+        
 
     },
     "contacts": [{
@@ -1156,22 +1157,25 @@ function firestore_create_orgrecord(newOrg) {
         "SBN"
     ],
     "location": {
-        "shippingAddress": newOrg.main_adddress
-    },
-    "displayName": newOrg.title
-};
-/*
-  if (newOrg.locationData.latlng.lat) {
-    FIRESTORE_urbalurba_import_record = {
-      "location": {
+        "shippingAddress": newOrg.main_adddress,
         "gps": {
           "_latitude": newOrg.locationData.latlng.lat,
           "_longitude": newOrg.locationData.latlng.lng
         }
-      }
-    }
+
+    },
+    "displayName": newOrg.title
+};
+
+  if (newOrg.locationData.latlng.lat) {
+    FIRESTORE_urbalurba_import_record.location = {
+        "gps": {
+          "_latitude": newOrg.locationData.latlng.lat,
+          "_longitude": newOrg.locationData.latlng.lng
+        }
+      }    
   }
-*/
+
 //console.log(FIRESTORE_urbalurba_import_record);
 return FIRESTORE_urbalurba_import_record
 };
@@ -1316,9 +1320,9 @@ getAllData()
 
 
 
-    //await getLocationData(allDataJoined); // Adds geolocation data to organisations
+    await getLocationData(allDataJoined); // Adds geolocation data to organisations
     
-   // await updateCKANorganizations(allDataJoined); //Push all data to CKAN
+   //await updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
     updateFIRESTOREorganizations(allDataJoined); //Push all data to firestore
 
