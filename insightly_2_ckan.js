@@ -1114,26 +1114,27 @@ function firestore_create_orgrecord(newOrg) {
   
   var FIRESTORE_urbalurba_import_record = new Array();
 
+
   FIRESTORE_urbalurba_import_record =
   {
     "website": newOrg.website,
     "organizationTags": string2array(newOrg.member_tags),
-    "categories": {
-        "SDG": string2array(newOrg.Sustainable_Development_Goals),
-        "segment": string2array(newOrg.organization_segments),
-        "challenges": string2array(newOrg.problems_solved),       
-        "organizationType": orgType2array(newOrg.organization_type),
-        
-
-    },
-    "contacts": [{
+    "categories": {     
+        "organizationType": orgType2array(newOrg.organization_type)
+    }
+    ,
+    "contacts": [
+      {
         "mobile": newOrg.contact_mobile,
         "title": newOrg.contact_title,
         "email": newOrg.contact_email,
-        "name": newOrg.contact_name
+        "name": newOrg.contact_name,
+        "picture" : newOrg.contact_picture,
+        "facebook" : newOrg.contact_facebook,
+        "linkedin" : newOrg.contact_linkedin,
+        "twitter" : newOrg.contact_twitter
     }
     ],
-
     "foreignKeys": {
         "ckan_id": newOrg.CKAN_ID,
         "organizationNumber": newOrg.organization_number,
@@ -1158,25 +1159,37 @@ function firestore_create_orgrecord(newOrg) {
     ],
     "location": {
         "shippingAddress": newOrg.main_adddress,
-        "gps": {
-          "_latitude": newOrg.locationData.latlng.lat,
-          "_longitude": newOrg.locationData.latlng.lng
-        }
 
     },
     "displayName": newOrg.title
 };
 
-  if (newOrg.locationData.latlng.lat) {
-    FIRESTORE_urbalurba_import_record.location = {
-        "gps": {
-          "_latitude": newOrg.locationData.latlng.lat,
-          "_longitude": newOrg.locationData.latlng.lng
-        }
-      }    
-  }
 
-//console.log(FIRESTORE_urbalurba_import_record);
+
+// Now we put the category fields if they exist
+if (newOrg.Sustainable_Development_Goals != "") {
+  FIRESTORE_urbalurba_import_record.categories.SDG = string2array(newOrg.Sustainable_Development_Goals);
+}
+
+if (newOrg.organization_segments != "") {
+  FIRESTORE_urbalurba_import_record.categories.segment = string2array(newOrg.organization_segments);
+}
+
+
+if (newOrg.problems_solved != "") {
+  FIRESTORE_urbalurba_import_record.categories.challenges = string2array(newOrg.problems_solved);
+}
+
+// Then see if there is a gps position
+
+if('locationData' in newOrg){
+  FIRESTORE_urbalurba_import_record.location.gps = {
+    "_latitude": newOrg.locationData.latlng.lat,
+    "_longitude": newOrg.locationData.latlng.lng
+  }
+}
+
+
 return FIRESTORE_urbalurba_import_record
 };
 
@@ -1263,6 +1276,10 @@ getAllData()
         contact_title: insightlyGetContactTitle(kontakten),
         contact_email: insightlyGetContactinfos("EMAIL",kontakten),
         contact_mobile: insightlyGetContactinfos("PHONE",kontakten),
+        contact_picture: kontakten.IMAGE_URL,
+        contact_facebook: kontakten.SOCIAL_FACEBOOK,
+        contact_linkedin: kontakten.SOCIAL_LINKEDIN,
+        contact_twitter: kontakten.SOCIAL_TWITTER,
         member_tags: insightlyGetCustomField("member_tags", organisasjonen),
         segment: insightlyGetCustomField("segment", organisasjonen),
         insightly_id: organisasjonen.ORGANISATION_ID,
@@ -1295,6 +1312,10 @@ getAllData()
           contact_title: theInsightlyOrg.contact_title,
           contact_email: theInsightlyOrg.contact_email,
           contact_mobile: theInsightlyOrg.contact_mobile,
+          contact_picture: theInsightlyOrg.contact_picture,
+          contact_facebook: theInsightlyOrg.contact_facebook,
+          contact_linkedin: theInsightlyOrg.contact_linkedin,
+          contact_twitter: theInsightlyOrg.contact_twitter,
           member_tags: theInsightlyOrg.member_tags,
           segment: theInsightlyOrg.segment,
           insightly_id: theInsightlyOrg.insightly_id,
