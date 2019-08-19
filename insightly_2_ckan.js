@@ -2,6 +2,7 @@
  * insightly_2_ckan
  * terchris/16Jan19
  * terchris/12may19 - adding write to firestore
+ * terchris/17jun19 - firestore ok. last commit before vacation
  *
  * This program reads copy all members of the smart city network to CKAN
  * All organizations from Insightly that has a tag "=SBNmedlemsvirksomhet"
@@ -179,7 +180,7 @@ function tidyOrganisations(orgArray) {
         logger.warn(logMsg, {system: 'insightly'});
       }
 
-      if (hasValue(orgArray[i].sustainable_development_goals)== false) { //sustainable_development_goals is blank
+      if (hasValue(orgArray[i].Sustainable_Development_Goals)== false) { //sustainable_development_goals is blank
         logMsg = "Organisation "+ orgArray[i].name + " (no " + i + ") is missing sustainable_development_goals ";
         logger.warn(logMsg, {system: 'insightly'});
       }
@@ -1343,9 +1344,9 @@ getAllData()
 
     await getLocationData(allDataJoined); // Adds geolocation data to organisations
     
-   //await updateCKANorganizations(allDataJoined); //Push all data to CKAN
+   await updateCKANorganizations(allDataJoined); //Push all data to CKAN
 
-    updateFIRESTOREorganizations(allDataJoined); //Push all data to firestore
+   // updateFIRESTOREorganizations(allDataJoined); //Push all data to firestore
 
 
     logger.info('Stoppig insightly_2_ckan ', {system: 'c2i'});
